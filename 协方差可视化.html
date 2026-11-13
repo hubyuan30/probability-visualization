@@ -1,0 +1,2895 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="一个可以动手拖拽的协方差可视化实验室：理解协方差、相关系数和常见误区。">
+<title>协方差实验室 · 两个变量是不是在一起波动？</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2317231f'/%3E%3Ccircle cx='23' cy='39' r='5.5' fill='%236ee7c8'/%3E%3Ccircle cx='42' cy='24' r='5.5' fill='%23ff9f7f'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#f4f1e8;
+  --bg-deep:#ebe7db;
+  --surface:#fffdf7;
+  --surface-2:#faf7ee;
+  --ink:#17211d;
+  --ink-2:#2a3832;
+  --muted:#66716a;
+  --faint:#96a098;
+  --line:#ded9cc;
+  --line-strong:#c9c2b2;
+  --teal:#0c7c68;
+  --teal-bright:#16a085;
+  --teal-soft:#e0f0eb;
+  --coral:#c95a3c;
+  --coral-soft:#f8e6df;
+  --amber:#dda02e;
+  --amber-soft:#f8edce;
+  --dark:#15231f;
+  --dark-2:#1c2e28;
+  --cream:#f5f0e3;
+  --serif:Georgia,"Times New Roman","Songti SC","STSong",serif;
+  --sans:"Segoe UI","Microsoft YaHei","PingFang SC","Hiragino Sans GB",system-ui,-apple-system,sans-serif;
+  --mono:"Cascadia Code","SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  --shadow:0 32px 70px -52px rgba(23,33,29,.4);
+  --radius:22px;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  font-family:var(--sans);
+  color:var(--ink);
+  background:
+    radial-gradient(1000px 680px at 88% -8%, rgba(12,124,104,.09), transparent 60%),
+    radial-gradient(820px 580px at -12% 24%, rgba(201,90,60,.06), transparent 56%),
+    var(--bg);
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  overflow-x:hidden;
+}
+::selection{background:#f3d58f;color:var(--ink)}
+a{color:inherit}
+button{font:inherit;color:inherit}
+canvas,svg{display:block}
+[hidden]{display:none!important}
+.nw{white-space:nowrap}
+:focus-visible{outline:2px solid var(--ink);outline-offset:3px;border-radius:4px}
+.dark :focus-visible,.hero-visual :focus-visible,.formula-anatomy :focus-visible{outline-color:var(--cream)}
+
+.container{width:min(1180px,calc(100% - 48px));margin-inline:auto}
+.section{padding:92px 0;scroll-margin-top:82px;position:relative}
+.section-tight{padding-top:54px}
+
+/* ---------- progress + nav ---------- */
+.scroll-progress{
+  position:fixed;top:0;left:0;height:2px;width:0;
+  background:linear-gradient(90deg,var(--teal),var(--amber),var(--coral));
+  z-index:80;transition:width .1s linear;
+}
+.nav{
+  position:sticky;top:0;z-index:60;
+  background:rgba(244,241,232,.82);
+  -webkit-backdrop-filter:blur(18px);
+  backdrop-filter:blur(18px);
+  border-bottom:1px solid rgba(201,194,178,.5);
+}
+.nav-in{
+  width:min(1180px,calc(100% - 48px));margin-inline:auto;
+  display:flex;align-items:center;gap:22px;padding:12px 0;
+}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-weight:700;font-size:13.5px;white-space:nowrap;letter-spacing:.01em}
+.brand-mark{
+  width:34px;height:34px;border-radius:10px;background:var(--ink);color:var(--cream);
+  display:grid;place-items:center;font-family:var(--serif);font-style:italic;
+  font-size:12.5px;letter-spacing:-.04em;box-shadow:0 6px 14px -8px rgba(23,33,29,.7);
+}
+.nav-links{display:flex;gap:2px;margin-left:auto;align-items:center}
+.nav-links a{
+  text-decoration:none;font-size:12.5px;color:var(--muted);
+  padding:7px 11px;border-radius:999px;transition:color .18s,background .18s;
+  white-space:nowrap;
+}
+.nav-links a:hover{color:var(--ink);background:rgba(23,33,29,.05)}
+.nav-links a.active{color:var(--ink);background:rgba(23,33,29,.065);font-weight:600}
+.nav-cta{
+  display:inline-flex;align-items:center;gap:7px;text-decoration:none;font-size:12.5px;font-weight:600;
+  background:var(--ink);color:var(--cream);border-radius:999px;padding:8px 15px;
+  transition:transform .18s,box-shadow .18s;white-space:nowrap;
+}
+.nav-cta:hover{transform:translateY(-1px);box-shadow:0 10px 22px -14px rgba(23,33,29,.8)}
+.nav-cta span{transition:transform .18s}
+.nav-cta:hover span{transform:translateX(2px)}
+
+/* ---------- hero ---------- */
+.hero{position:relative;padding:64px 0 38px;overflow:hidden}
+.hero::before{
+  content:"";position:absolute;left:-180px;top:80px;width:420px;height:420px;border-radius:50%;
+  background:radial-gradient(circle,rgba(221,160,46,.13),transparent 66%);pointer-events:none;
+}
+.hero-grid{display:grid;grid-template-columns:1.06fr .94fr;gap:54px;align-items:center}
+.hero-copy{position:relative;z-index:1;padding:10px 0}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:9px;padding:7px 12px;border-radius:999px;
+  border:1px solid var(--line);background:rgba(255,253,247,.58);
+  color:var(--muted);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;
+}
+.pulse-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);position:relative;flex:none}
+.pulse-dot::after{
+  content:"";position:absolute;inset:-4px;border-radius:50%;border:1px solid rgba(12,124,104,.35);
+  animation:pulse-ring 2.6s ease-out infinite;
+}
+@keyframes pulse-ring{0%{transform:scale(.5);opacity:1}70%,100%{transform:scale(1.8);opacity:0}}
+.hero h1{
+  margin:26px 0 22px;font-size:clamp(2.7rem,4.9vw,4.5rem);line-height:1.08;
+  letter-spacing:-.04em;font-weight:800;max-width:none;
+}
+.mark{
+  position:relative;white-space:nowrap;
+  background:linear-gradient(180deg,transparent 60%,rgba(221,160,46,.44) 60%,rgba(221,160,46,.44) 91%,transparent 91%);
+  padding:0 .04em;
+}
+.hero-lede{
+  margin:0;max-width:48ch;color:var(--ink-2);font-size:15.5px;line-height:1.9;
+}
+.hero-lede strong{color:var(--ink);font-weight:700;box-shadow:inset 0 -.45em 0 rgba(12,124,104,.13)}
+.hero-formula{
+  display:inline-flex;align-items:center;flex-wrap:wrap;gap:2px;margin:25px 0 26px;
+  font-family:var(--serif);font-size:clamp(1.04rem,1.5vw,1.3rem);letter-spacing:.005em;
+  border:1px solid var(--line);background:rgba(255,253,247,.72);border-radius:13px;
+  padding:12px 16px;box-shadow:0 18px 36px -34px rgba(23,33,29,.5);
+}
+.hero-formula .fname{font-style:italic;font-weight:600}
+.hero-formula .fx{color:var(--teal);font-style:italic}
+.hero-formula .fy{color:var(--coral);font-style:italic}
+.hero-formula .fmean{color:#a37517;font-style:italic;font-weight:600}
+.hero-actions{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:12px 21px;border-radius:999px;border:1px solid transparent;
+  text-decoration:none;font-size:13.5px;font-weight:600;cursor:pointer;
+  transition:transform .18s,box-shadow .18s,background .18s,border-color .18s;
+}
+.btn-dark{background:var(--ink);color:var(--cream);box-shadow:0 18px 34px -22px rgba(23,33,29,.9)}
+.btn-dark:hover{transform:translateY(-2px);box-shadow:0 22px 38px -20px rgba(23,33,29,.8)}
+.btn-ghost{background:rgba(255,253,247,.36);border-color:var(--line-strong);color:var(--ink-2)}
+.btn-ghost:hover{background:var(--surface);transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.hero-meta{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:28px;font-size:11px;color:var(--faint)}
+.hero-meta span{display:inline-flex;align-items:center;gap:6px}
+.hero-meta .meta-muted{opacity:.75}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;flex:none;vertical-align:1px}
+.dot.teal{background:var(--teal)}
+.dot.coral{background:var(--coral)}
+.dot.amber{background:var(--amber)}
+.dot.muted{background:var(--faint)}
+
+.hero-visual{
+  position:relative;border-radius:28px;padding:15px 16px 13px;min-height:470px;
+  display:flex;flex-direction:column;overflow:hidden;isolation:isolate;
+  background:
+    radial-gradient(480px 320px at 88% 0%, rgba(22,160,133,.2), transparent 64%),
+    radial-gradient(380px 280px at 4% 100%, rgba(201,90,60,.16), transparent 68%),
+    linear-gradient(155deg,#182722,#111c18 62%);
+  border:1px solid rgba(255,255,255,.09);
+  box-shadow:0 54px 90px -48px rgba(23,33,29,.72), inset 0 1px 0 rgba(255,255,255,.06);
+  color:var(--cream);
+}
+.hero-visual::before{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(245,240,227,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(245,240,227,.035) 1px,transparent 1px);
+  background-size:46px 46px;
+  -webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.9),transparent 88%);
+  mask-image:linear-gradient(180deg,rgba(0,0,0,.9),transparent 88%);
+}
+.hero-visual::after{
+  content:"";position:absolute;width:220px;height:220px;right:-80px;top:-80px;border-radius:50%;
+  border:1px solid rgba(245,240,227,.09);pointer-events:none;z-index:0;
+}
+.hv-top,.hv-bottom{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.hv-top{padding:1px 3px 12px}
+.live{display:inline-flex;align-items:center;gap:7px;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:rgba(245,240,227,.55);font-weight:600}
+.live i{width:6px;height:6px;border-radius:50%;background:#66e0c2;box-shadow:0 0 10px rgba(102,224,194,.8);animation:live-blink 2.2s ease-in-out infinite}
+@keyframes live-blink{0%,100%{opacity:1}50%{opacity:.35}}
+.hv-r{
+  font-family:var(--mono);font-size:10px;color:rgba(245,240,227,.85);letter-spacing:0;
+  background:rgba(255,255,255,.065);border:1px solid rgba(255,255,255,.11);
+  border-radius:999px;padding:5px 9px;font-variant-numeric:tabular-nums;
+}
+.hv-canvas{position:relative;flex:1;min-height:330px;z-index:1}
+#heroCanvas{position:absolute;inset:0;width:100%;height:100%}
+.hv-bottom{
+  padding:11px 3px 0;border-top:1px solid rgba(245,240,227,.1);margin-top:9px;
+  font-size:11px;color:rgba(245,240,227,.7);
+}
+.hv-status{display:flex;align-items:center;gap:7px;min-width:0}
+.hv-status i{width:7px;height:7px;border-radius:50%;background:#66e0c2;flex:none;box-shadow:0 0 9px rgba(102,224,194,.65)}
+.hv-status i.neg{background:#ff9f7f;box-shadow:0 0 9px rgba(255,159,127,.6)}
+.hv-status i.zero{background:rgba(245,240,227,.55);box-shadow:none}
+.hv-status span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hv-note{font-size:9.5px;color:rgba(245,240,227,.36);white-space:nowrap;letter-spacing:.03em}
+
+/* ---------- section headers ---------- */
+.section-head{display:grid;grid-template-columns:72px minmax(0,1fr);gap:22px;margin-bottom:38px;align-items:start}
+.sec-index{
+  font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.13em;
+  border-top:1px solid var(--line-strong);padding-top:10px;line-height:1.4;
+}
+.kicker{display:block;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--teal);font-weight:700;margin-bottom:9px}
+.section-head h2{
+  margin:0 0 12px;font-size:clamp(1.85rem,3.6vw,2.95rem);line-height:1.16;
+  letter-spacing:-.035em;font-weight:800;max-width:22ch;
+}
+.lede{margin:0;color:var(--muted);font-size:14px;line-height:1.85;max-width:64ch}
+.lede strong{color:var(--ink-2);font-weight:600}
+
+/* ---------- concept cards ---------- */
+.mnemonic-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.concept-card{
+  position:relative;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--radius);padding:28px 28px 24px;box-shadow:var(--shadow);overflow:hidden;
+}
+.concept-card .card-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px;position:relative;z-index:1}
+.tag{
+  display:inline-flex;align-items:center;gap:5px;white-space:nowrap;
+  font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
+  color:var(--muted);background:rgba(23,33,29,.045);border:1px solid var(--line);
+  padding:5px 8px;border-radius:999px;line-height:1.2;
+}
+.glyph{font-family:var(--serif);font-style:italic;font-size:38px;line-height:1;color:var(--line-strong);letter-spacing:-.04em}
+.concept-card h3{margin:0 0 13px;font-size:clamp(1.2rem,1.8vw,1.48rem);letter-spacing:-.02em;line-height:1.35;position:relative;z-index:1}
+.mini-formula{
+  position:relative;z-index:1;display:inline-block;max-width:100%;
+  font-family:var(--serif);font-size:clamp(1rem,1.4vw,1.18rem);line-height:1.5;
+  background:var(--surface-2);border:1px solid var(--line);border-radius:10px;
+  padding:10px 13px;margin-bottom:15px;letter-spacing:.005em;overflow-wrap:anywhere;
+}
+.mini-formula .fx{color:var(--teal);font-style:italic}
+.mini-formula .fy{color:var(--coral);font-style:italic}
+.concept-card p{margin:0;font-size:13px;line-height:1.9;color:var(--muted);position:relative;z-index:1}
+.card-foot{
+  margin-top:19px;padding-top:14px;border-top:1px solid var(--line);
+  font-size:11px;color:var(--faint);display:flex;align-items:center;gap:7px;position:relative;z-index:1;
+}
+.concept-card.dark{
+  background:
+    radial-gradient(420px 260px at 90% 0%, rgba(22,160,133,.18), transparent 64%),
+    linear-gradient(140deg,#172620,#1b2c26 72%);
+  border-color:rgba(255,255,255,.09);color:var(--cream);
+}
+.concept-card.dark .tag{color:rgba(245,240,227,.66);border-color:rgba(255,255,255,.13);background:rgba(255,255,255,.055)}
+.concept-card.dark .glyph{color:rgba(245,240,227,.18)}
+.concept-card.dark h3{color:var(--cream)}
+.concept-card.dark p{color:rgba(245,240,227,.62)}
+.concept-card.dark .mini-formula{background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.12);color:var(--cream)}
+.concept-card.dark .mini-formula .fx{color:#70dcc0}
+.concept-card.dark .mini-formula .fy{color:#ffa889}
+.concept-card.dark .card-foot{border-color:rgba(255,255,255,.1);color:rgba(245,240,227,.46)}
+.concept-card.dark .card-foot .dot.teal{background:#70dcc0}
+.concept-card.dark .card-foot .dot.coral{background:#ffa889}
+.card-glow{position:absolute;width:160px;height:160px;border-radius:50%;right:-40px;bottom:-70px;background:rgba(22,160,133,.12);filter:blur(26px);pointer-events:none}
+
+.variance-doodle{position:absolute;right:23px;bottom:64px;width:120px;opacity:.55;color:var(--ink);pointer-events:none}
+.dark .variance-doodle{opacity:.4;color:var(--cream)}
+
+/* ---------- quadrant card ---------- */
+.quadrant-card{
+  display:grid;grid-template-columns:.92fr 1.08fr;gap:30px;align-items:center;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+  padding:32px;box-shadow:var(--shadow);overflow:hidden;
+}
+.quad-copy h3{margin:4px 0 12px;font-size:clamp(1.18rem,2vw,1.5rem);letter-spacing:-.02em;line-height:1.35}
+.quad-copy>p{margin:0;font-size:13px;color:var(--muted);line-height:1.85}
+.quad-table{display:grid;gap:7px;margin:18px 0 14px}
+.q{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:9px;font-size:11.5px;font-weight:600;line-height:1.5}
+.q-pos{background:var(--teal-soft);color:var(--teal);border:1px solid rgba(12,124,104,.14)}
+.q-neg{background:var(--coral-soft);color:var(--coral);border:1px solid rgba(201,90,60,.14)}
+.small{font-size:11.5px!important;color:var(--faint)!important;line-height:1.75!important}
+.quad-fig{min-width:0}
+.quad-fig svg{width:100%;height:auto;filter:drop-shadow(0 18px 24px rgba(23,33,29,.05))}
+.quad-fig .q-dot{filter:drop-shadow(0 2px 2px rgba(23,33,29,.18))}
+.quad-fig text{user-select:none}
+
+.takeaway{
+  margin-top:16px;position:relative;overflow:hidden;border-radius:18px;
+  background:var(--ink);color:var(--cream);padding:23px 28px;
+  display:flex;align-items:center;gap:17px;
+}
+.takeaway::after{
+  content:"";position:absolute;width:260px;height:260px;border-radius:50%;right:-100px;bottom:-160px;
+  background:rgba(221,160,46,.12);filter:blur(24px);pointer-events:none;
+}
+.quote-mark{font-family:var(--serif);font-size:48px;line-height:.6;color:rgba(221,160,46,.6);flex:none;transform:translateY(8px)}
+.takeaway p{margin:0;font-size:clamp(1.02rem,1.8vw,1.24rem);letter-spacing:.005em;line-height:1.6}
+.takeaway strong{color:#f0c56e;font-weight:700}
+.takeaway-sub{margin-left:auto;max-width:35ch;text-align:right;color:rgba(245,240,227,.5);font-size:10.5px;line-height:1.7;flex:none}
+
+/* ---------- lab shells ---------- */
+.lab-card{
+  background:var(--surface);border:1px solid var(--line);border-radius:26px;
+  box-shadow:0 44px 80px -58px rgba(23,33,29,.5);overflow:hidden;
+}
+.lab-toolbar{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  padding:13px 17px;border-bottom:1px solid var(--line);background:rgba(250,247,238,.72);
+}
+.preset-group,.toolbar-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.toolbar-label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-right:3px;font-weight:600}
+.chip{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;line-height:1.2;
+  border:1px solid var(--line);background:var(--surface);color:var(--muted);
+  border-radius:999px;padding:7px 11px;font-size:11px;font-weight:600;cursor:pointer;
+  transition:transform .16s,border-color .16s,color .16s,background .16s;white-space:nowrap;
+}
+.chip:hover{border-color:var(--line-strong);color:var(--ink);transform:translateY(-1px)}
+.chip.is-active{background:var(--ink);border-color:var(--ink);color:var(--cream)}
+.chip.is-active .dot.teal{background:#67dfc2}
+.chip.is-active .dot.coral{background:#ff9f80}
+.chip:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.icon-btn{
+  width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--surface);
+  display:grid;place-items:center;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;
+  transition:transform .16s,border-color .16s,color .16s;
+}
+.icon-btn:hover{border-color:var(--line-strong);color:var(--ink);transform:rotate(-22deg)}
+.switch{display:inline-flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);cursor:pointer;user-select:none;padding:2px}
+.switch input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.switch-track{width:30px;height:17px;border-radius:999px;background:#d9d4c7;position:relative;transition:background .18s;flex:none}
+.switch-track::after{
+  content:"";position:absolute;width:13px;height:13px;border-radius:50%;background:#fff;top:2px;left:2px;
+  box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .18s;
+}
+.switch input:checked + .switch-track{background:var(--teal)}
+.switch input:checked + .switch-track::after{transform:translateX(13px)}
+.switch input:focus-visible + .switch-track{outline:2px solid var(--ink);outline-offset:2px}
+
+.lab-grid{display:grid;grid-template-columns:minmax(0,1.36fr) minmax(322px,.72fr)}
+.chart-pane{padding:16px 16px 11px;min-width:0;display:flex;flex-direction:column}
+.canvas-wrap{
+  position:relative;flex:1;min-height:474px;border:1px solid var(--line);
+  border-radius:16px;overflow:hidden;background:#fbf9f2;
+}
+#labCanvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+#labCanvas.dragging{cursor:grabbing}
+.canvas-note{
+  position:absolute;left:10px;bottom:9px;z-index:3;pointer-events:none;
+  font-size:9.5px;color:var(--faint);background:rgba(255,253,247,.82);
+  border:1px solid var(--line);border-radius:999px;padding:4px 8px;
+  -webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);
+}
+.play-badge{
+  position:absolute;top:11px;left:50%;transform:translateX(-50%);z-index:4;pointer-events:none;
+  background:rgba(23,33,29,.93);color:var(--cream);font-size:10px;font-weight:500;
+  padding:6px 11px;border-radius:999px;white-space:nowrap;letter-spacing:.02em;
+  box-shadow:0 8px 20px -12px rgba(0,0,0,.6);font-variant-numeric:tabular-nums;
+}
+.chart-tip{
+  position:absolute;z-index:5;pointer-events:none;
+  background:rgba(23,33,29,.95);color:var(--cream);border-radius:9px;
+  padding:8px 10px;font-size:10px;line-height:1.6;white-space:nowrap;
+  box-shadow:0 14px 30px -16px rgba(0,0,0,.55);
+  transform:translate(-50%,calc(-100% - 13px));
+}
+.chart-tip.below{transform:translate(-50%,15px)}
+.chart-tip b{color:#f0c56e;font-weight:600}
+.chart-tip .tip-pos{color:#79e2c8;font-weight:600}
+.chart-tip .tip-neg{color:#ffab8e;font-weight:600}
+.chart-tip .tip-muted{color:rgba(245,240,227,.55)}
+.chart-foot{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  padding:9px 3px 0;font-size:9.5px;color:var(--faint);
+}
+.legend{display:inline-flex;align-items:center;gap:9px;flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+
+.lab-side{
+  padding:20px 20px 16px;border-left:1px solid var(--line);background:linear-gradient(180deg,rgba(250,247,238,.55),rgba(255,253,247,0) 30%);
+  display:flex;flex-direction:column;min-width:0;
+}
+.stat-hero{padding-bottom:14px;border-bottom:1px dashed var(--line)}
+.stat-label{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);font-weight:700}
+.stat-big{
+  font-family:var(--serif);font-size:clamp(2.45rem,3.4vw,3.15rem);line-height:1.02;
+  letter-spacing:-.025em;margin:6px 0 6px;font-variant-numeric:tabular-nums;
+  transition:color .18s;
+}
+.stat-big.pos{color:var(--teal)}
+.stat-big.neg{color:var(--coral)}
+.stat-big.zero{color:var(--muted)}
+.status-pill{
+  display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;
+  padding:4px 8px;border-radius:999px;background:var(--teal-soft);color:var(--teal);
+  letter-spacing:.02em;
+}
+.status-pill.neg{background:var(--coral-soft);color:var(--coral)}
+.status-pill.zero{background:rgba(23,33,29,.055);color:var(--muted)}
+.mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:13px 0;border-bottom:1px dashed var(--line)}
+.mini-grid>div{background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:7px 9px;display:flex;flex-direction:column;gap:1px}
+.mini-grid span{font-size:9px;color:var(--faint);letter-spacing:.03em}
+.mini-grid b{font-family:var(--mono);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.r-block{padding:13px 0;border-bottom:1px dashed var(--line)}
+.r-label{display:flex;justify-content:space-between;align-items:baseline;font-size:10.5px;color:var(--muted)}
+.r-label b{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
+.r-track{
+  position:relative;height:5px;border-radius:999px;margin:10px 0 6px;
+  background:linear-gradient(90deg,var(--coral-soft),#ebe6d9 50%,var(--teal-soft));
+  border:1px solid var(--line);
+}
+.r-mid{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--line-strong)}
+.r-track i{
+  position:absolute;top:50%;left:50%;width:13px;height:13px;border-radius:50%;
+  background:var(--teal);border:3px solid var(--surface);box-shadow:0 1px 4px rgba(0,0,0,.22);
+  transform:translate(-50%,-50%);transition:left .1s linear,background .18s;
+}
+.r-scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:8.5px;color:var(--faint)}
+.eq-box{
+  margin:13px 0;background:#f3efe4;border:1px solid var(--line);border-radius:8px;
+  padding:8px 10px;display:flex;align-items:flex-start;gap:8px;
+}
+.eq-label{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);padding-top:2px;flex:none}
+.eq-box code{font-family:var(--mono);font-size:9.5px;line-height:1.6;color:var(--ink-2);word-break:break-word;font-variant-numeric:tabular-nums}
+.contrib-head{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:8.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--faint);margin-bottom:6px;font-weight:600}
+.contrib-head span:last-child{font-family:var(--mono);letter-spacing:0;text-transform:none}
+.contrib-list{
+  display:flex;flex-direction:column;gap:2px;max-height:274px;overflow-y:auto;padding-right:4px;
+  scrollbar-width:thin;scrollbar-color:var(--line-strong) transparent;
+}
+.contrib-list::-webkit-scrollbar{width:5px}
+.contrib-list::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:99px}
+.contrib{
+  display:grid;grid-template-columns:21px minmax(0,1fr) 46px;align-items:center;gap:7px;
+  padding:3px 4px;border-radius:6px;cursor:default;transition:background .14s;outline-offset:1px;
+}
+.contrib:hover,.contrib.active{background:rgba(23,33,29,.055)}
+.contrib-idx{
+  width:18px;height:17px;border:1px solid var(--line);border-radius:4px;
+  display:grid;place-items:center;font-family:var(--mono);font-size:8px;color:var(--faint);
+  background:var(--surface);line-height:1;
+}
+.contrib-bar{position:relative;height:5px;background:rgba(23,33,29,.05);border-radius:999px;min-width:40px}
+.contrib-bar::before{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--line-strong)}
+.contrib-bar i{position:absolute;top:0;bottom:0;border-radius:999px;min-width:2px;transition:left .08s linear,width .08s linear}
+.contrib-bar i.pos{background:var(--teal)}
+.contrib-bar i.neg{background:var(--coral)}
+.contrib-val{font-family:var(--mono);font-size:9px;text-align:right;font-variant-numeric:tabular-nums}
+.contrib-val.pos{color:var(--teal)}
+.contrib-val.neg{color:var(--coral)}
+.sign-note{margin:8px 0 0;font-size:9.5px;color:var(--faint);line-height:1.6}
+
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.step{
+  display:flex;gap:11px;align-items:flex-start;padding:14px 16px;
+  border:1px solid var(--line);border-radius:13px;background:rgba(255,253,247,.55);
+}
+.step .n{font-family:var(--mono);font-size:9px;color:var(--teal);padding-top:2px;flex:none}
+.step b{display:block;font-size:11.5px;line-height:1.4;margin-bottom:2px}
+.step p{margin:0;font-size:10px;color:var(--faint);line-height:1.65}
+
+/* ---------- rho lab ---------- */
+.rho-grid{display:grid;grid-template-columns:minmax(0,1.31fr) minmax(350px,.69fr)}
+.rho-wrap{min-height:526px}
+#rhoCanvas{position:absolute;inset:0;width:100%;height:100%}
+.overlay-chip{
+  position:absolute;z-index:3;pointer-events:none;font-size:10px;font-weight:600;
+  background:rgba(255,253,247,.84);border:1px solid var(--line);border-radius:999px;
+  padding:5px 9px;color:var(--ink-2);font-variant-numeric:tabular-nums;
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+}
+.overlay-chip.tl{left:11px;top:11px}
+.overlay-chip.tr{right:11px;top:11px;color:var(--faint);font-weight:500}
+.overlay-chip .rho-caret{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px;vertical-align:0}
+.rho-controls{
+  padding:20px;border-left:1px solid var(--line);background:var(--surface-2);
+  display:flex;flex-direction:column;gap:16px;min-width:0;
+}
+.controls-head h3{margin:0 0 4px;font-size:15px;letter-spacing:-.01em}
+.controls-head p{margin:0;font-size:10.5px;color:var(--faint);line-height:1.6}
+.rho-live{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rho-live>div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0}
+.rho-live span{display:block;font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);font-weight:600}
+.rho-live b{display:block;font-family:var(--serif);font-size:1.5rem;line-height:1.25;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin-top:2px}
+.rho-live b.pos{color:var(--teal)}
+.rho-live b.neg{color:var(--coral)}
+.rho-live b.zero{color:var(--muted)}
+.slider-block{border-top:1px dashed var(--line);padding-top:13px}
+.slider-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:2px}
+.slider-head label{font-size:11.5px;font-weight:600;color:var(--ink-2)}
+.slider-head label small{font-weight:400;color:var(--faint);font-size:9.5px;margin-left:4px}
+.slider-head output{
+  font-family:var(--mono);font-size:10px;color:var(--teal);background:var(--teal-soft);
+  padding:3px 6px;border-radius:5px;min-width:42px;text-align:center;font-variant-numeric:tabular-nums;
+}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:5px;border-radius:999px;
+  background:linear-gradient(to right,var(--accent,var(--teal)) 0%,var(--accent,var(--teal)) var(--p,50%),#e4dfd2 var(--p,50%),#e4dfd2 100%);
+  outline:none;cursor:pointer;margin:9px 0 6px;border:0;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;width:17px;height:17px;border-radius:50%;
+  background:var(--surface);border:2px solid var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.18);
+  transition:transform .15s;cursor:grab;
+}
+input[type=range]::-webkit-slider-thumb:active{cursor:grabbing;transform:scale(1.08)}
+input[type=range]::-moz-range-thumb{
+  width:15px;height:15px;border-radius:50%;background:var(--surface);
+  border:2px solid var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.18);cursor:grab;
+}
+input[type=range]::-moz-range-track{background:transparent}
+input.rho-range{
+  background:linear-gradient(90deg,rgba(201,90,60,.4) 0%,rgba(201,90,60,.16) 28%,#e9e4d7 50%,rgba(12,124,104,.16) 72%,rgba(12,124,104,.4) 100%);
+}
+.slider-ends{display:flex;justify-content:space-between;font-size:8.5px;color:var(--faint);font-family:var(--mono)}
+.quick-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.mini-chip{
+  border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:4px 7px;
+  font-size:8.5px;color:var(--muted);cursor:pointer;transition:.15s;line-height:1.3;
+}
+.mini-chip:hover{color:var(--ink);border-color:var(--line-strong)}
+.mini-chip.active{background:var(--ink);border-color:var(--ink);color:var(--cream)}
+.identity-box{
+  background:var(--surface);border:1px solid var(--line);border-radius:10px;
+  padding:10px 12px;display:flex;flex-direction:column;gap:4px;margin-top:2px;
+}
+.identity-box>span{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:600}
+.identity-box code{font-family:var(--mono);font-size:10px;color:var(--ink);line-height:1.55;font-variant-numeric:tabular-nums;word-break:break-word}
+.identity-box small{font-size:9px;color:var(--faint);line-height:1.55}
+.matrix-box{border-top:1px dashed var(--line);padding-top:12px;margin-top:auto}
+.matrix-title{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:4px}
+.matrix{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--ink-2)}
+.matrix .bracket{font-family:var(--serif);font-size:37px;font-weight:300;color:var(--line-strong);line-height:.8;user-select:none}
+.matrix-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px 14px;min-width:106px}
+.matrix-grid b{font-weight:500;text-align:right;font-variant-numeric:tabular-nums}
+.matrix-box small{display:block;font-size:8.5px;color:var(--faint);margin-top:5px}
+.rho-tip{
+  margin-top:14px;display:flex;gap:9px;align-items:flex-start;flex-wrap:wrap;
+  border:1px dashed var(--line-strong);background:rgba(255,253,247,.5);border-radius:12px;
+  padding:11px 14px;font-size:10.5px;color:var(--muted);line-height:1.7;
+}
+.rho-tip .tip-label{font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);flex:none;padding-top:2px}
+.rho-tip b{color:var(--ink-2)}
+
+/* ---------- formula ---------- */
+.formula-anatomy{
+  position:relative;display:grid;grid-template-columns:1.02fr .98fr;gap:34px;
+  border-radius:26px;padding:34px;overflow:hidden;color:var(--cream);
+  background:
+    radial-gradient(560px 300px at 16% 0%, rgba(12,124,104,.3), transparent 65%),
+    radial-gradient(420px 300px at 100% 100%, rgba(201,90,60,.14), transparent 70%),
+    var(--dark);
+  border:1px solid rgba(255,255,255,.07);
+  box-shadow:0 50px 90px -55px rgba(23,33,29,.65);
+}
+.formula-hero{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:center;min-width:0}
+.formula-anatomy .kicker{color:#78e0c5}
+.big-formula{
+  font-family:var(--serif);font-size:clamp(.82rem,4.3vw,1.8rem);line-height:1.75;
+  margin:15px 0 16px;letter-spacing:.005em;white-space:nowrap;
+}
+.big-formula .fx{color:#72dfc4;font-style:italic}
+.big-formula .fy{color:#ffa689;font-style:italic}
+.big-formula .fmean{color:#f0c56e;font-style:italic}
+.formula-caption{font-size:11px;color:rgba(245,240,227,.52);line-height:1.7;max-width:40ch}
+.anatomy-list{list-style:none;margin:0;padding:0;position:relative;z-index:1;align-self:center}
+.anatomy-list li{display:flex;gap:13px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.085)}
+.anatomy-list li:first-child{padding-top:0}
+.anatomy-list li:last-child{border-bottom:0;padding-bottom:0}
+.anatomy-list .num{font-family:var(--mono);font-size:8.5px;color:#78e0c5;padding-top:3px;flex:none}
+.anatomy-list b{display:block;font-size:11.5px;font-weight:600;margin-bottom:2px;color:var(--cream)}
+.anatomy-list p{margin:0;font-size:10px;line-height:1.65;color:rgba(245,240,227,.5)}
+.anatomy-list .fx{color:#72dfc4}
+.anatomy-list .fy{color:#ffa689}
+.identity-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.identity{
+  background:var(--surface);border:1px solid var(--line);border-radius:17px;padding:19px 21px;
+  box-shadow:0 22px 50px -48px rgba(23,33,29,.5);transition:transform .18s,border-color .18s;
+}
+.identity:hover{transform:translateY(-2px);border-color:var(--line-strong)}
+.identity h3{
+  margin:9px 0 5px;font-family:var(--serif);font-weight:600;
+  font-size:clamp(1rem,1.7vw,1.24rem);line-height:1.5;letter-spacing:.005em;
+}
+.identity p{margin:0;font-size:10.5px;line-height:1.7;color:var(--faint)}
+.alt-formula{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  margin-top:13px;padding:13px 17px;border:1px dashed var(--line-strong);
+  border-radius:12px;background:rgba(255,253,247,.38);
+}
+.alt-formula code{font-family:var(--serif);font-size:15px;color:var(--ink-2)}
+.alt-formula span{font-size:10px;color:var(--faint);line-height:1.6}
+
+/* ---------- myths ---------- */
+.myth-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.myth-card{
+  position:relative;background:var(--surface);border:1px solid var(--line);
+  border-radius:20px;padding:23px;box-shadow:var(--shadow);overflow:hidden;
+}
+.myth-card.wide{grid-column:1/-1;display:grid;grid-template-columns:1.02fr .98fr;gap:26px;align-items:center}
+.myth-copy{min-width:0}
+.myth-card h3{margin:8px 0 8px;font-size:clamp(1.12rem,1.9vw,1.4rem);letter-spacing:-.025em;line-height:1.4}
+.myth-card p{margin:0;font-size:11.5px;line-height:1.85;color:var(--muted)}
+.myth-card p b{color:var(--ink-2)}
+.tag.warn{background:var(--coral-soft);border-color:rgba(201,90,60,.16);color:var(--coral)}
+.u-chart{
+  position:relative;height:330px;background:var(--surface-2);border:1px solid var(--line);
+  border-radius:14px;overflow:hidden;min-width:0;
+}
+#uCanvas{position:absolute;inset:0;width:100%;height:100%}
+.u-chip{position:absolute;top:9px;left:9px;z-index:2;pointer-events:none;background:rgba(255,253,247,.8);border:1px solid var(--line);border-radius:999px;padding:4px 8px;font-family:var(--mono);font-size:9px;color:var(--muted)}
+.myth-stats{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:13px 0 12px}
+.myth-stats span{font-size:9.5px;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:4px 8px;white-space:nowrap}
+.myth-stats b{font-family:var(--mono);font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.myth-stats .ok{background:var(--coral-soft);border-color:rgba(201,90,60,.13);color:var(--coral);font-weight:600}
+.myth-card .chip{font-size:10px;padding:6px 10px}
+.scale-demo{margin-top:16px;border:1px solid var(--line);border-radius:11px;overflow:hidden;background:var(--surface-2)}
+.scale-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 11px;font-size:10px;color:var(--muted)}
+.scale-row+.scale-row{border-top:1px solid var(--line)}
+.scale-row b{font-family:var(--mono);font-size:10px;color:var(--ink-2);font-weight:500}
+.scale-arrow{display:flex;align-items:center;gap:7px;padding:5px 11px;font-size:8.5px;color:var(--coral);background:rgba(201,90,60,.055);border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-weight:600;letter-spacing:.03em}
+.scale-pill{margin:9px 11px;display:inline-flex;align-items:center;gap:5px;font-size:9px;color:var(--teal);background:var(--teal-soft);border-radius:999px;padding:3px 7px;font-weight:600}
+.cause-demo{margin-top:16px;position:relative;padding:12px;border:1px solid var(--line);border-radius:11px;background:var(--surface-2)}
+.cause-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cause-top span{font-size:9.5px;font-weight:600;color:var(--ink-2);background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:7px 8px;text-align:center;flex:1;line-height:1.3}
+.cause-top i{font-style:normal;font-size:10px;color:var(--faint);flex:none}
+.cause-line{text-align:center;font-size:8.5px;color:var(--faint);padding:5px 0;position:relative}
+.cause-line::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line-strong);transform:translateX(-50%);z-index:0}
+.cause-line span{position:relative;background:var(--surface-2);padding:0 6px;z-index:1}
+.cause-bottom{display:flex;align-items:center;justify-content:center;gap:7px;font-size:9px;color:var(--coral);background:var(--coral-soft);border:1px solid rgba(201,90,60,.13);border-radius:7px;padding:6px 8px;font-weight:600}
+.cause-bottom b{font-weight:600;color:var(--coral)}
+.cause-bottom span{font-weight:400;color:var(--muted)}
+
+/* ---------- quiz ---------- */
+.quiz-head{grid-template-columns:72px minmax(0,1fr) auto!important}
+.quiz-score{
+  align-self:start;margin-top:2px;font-family:var(--mono);font-size:11px;
+  background:var(--surface);border:1px solid var(--line);border-radius:999px;
+  padding:7px 12px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums;
+}
+.quiz-score b{color:var(--ink);font-weight:600}
+.quiz-list{display:grid;gap:11px}
+.quiz-card{
+  background:var(--surface);border:1px solid var(--line);border-radius:17px;
+  padding:21px 23px;box-shadow:0 26px 60px -58px rgba(23,33,29,.35);
+  display:grid;grid-template-columns:34px minmax(0,1fr);gap:14px;transition:border-color .2s;
+}
+.quiz-card.answered{border-color:var(--line-strong)}
+.quiz-no{
+  width:28px;height:28px;border:1px solid var(--line);border-radius:7px;background:var(--surface-2);
+  display:grid;place-items:center;font-family:var(--mono);font-size:9px;color:var(--teal);line-height:1;
+}
+.quiz-body{min-width:0}
+.quiz-card h3{margin:1px 0 12px;font-size:clamp(.96rem,1.5vw,1.09rem);line-height:1.65;font-weight:650;letter-spacing:-.005em}
+.options{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.opt{
+  display:flex;align-items:flex-start;gap:8px;text-align:left;line-height:1.55;
+  border:1px solid var(--line);border-radius:8px;background:var(--surface-2);
+  padding:9px 11px;font-size:12px;color:var(--ink-2);cursor:pointer;transition:.15s;
+}
+.opt:hover:not(:disabled){border-color:var(--line-strong);background:#fff}
+.opt .key{font-family:var(--mono);font-size:8.5px;color:var(--faint);flex:none;padding-top:1px}
+.opt.correct{border-color:rgba(12,124,104,.45);background:var(--teal-soft);color:var(--teal);font-weight:600}
+.opt.correct .key{color:var(--teal)}
+.opt.wrong{border-color:rgba(201,90,60,.4);background:var(--coral-soft);color:var(--coral)}
+.opt.wrong .key{color:var(--coral)}
+.opt:disabled{cursor:default;opacity:.9}
+.explain{
+  display:none;margin-top:10px;border-left:2px solid var(--teal);
+  padding:1px 0 1px 10px;background:linear-gradient(90deg,rgba(224,240,235,.55),transparent 70%);
+}
+.explain.show{display:block;animation:fade-in .28s ease both}
+.explain b{font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--teal)}
+.explain p{margin:2px 0 0;font-size:11px;line-height:1.75;color:var(--muted)}
+@keyframes fade-in{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+.quiz-result{
+  display:none;margin-top:14px;border-radius:14px;padding:16px 19px;
+  background:var(--surface);border:1px solid var(--line);font-size:11.5px;color:var(--muted);line-height:1.75;
+}
+.quiz-result.show{display:block;animation:fade-in .3s ease both}
+.quiz-result b{color:var(--ink)}
+.quiz-result .result-mark{color:var(--teal);font-weight:700}
+
+/* ---------- footer ---------- */
+.footer-card{
+  position:relative;overflow:hidden;background:var(--dark);color:var(--cream);
+  border-radius:26px;padding:38px 40px;margin:34px 0 22px;
+  display:grid;grid-template-columns:1.15fr .85fr;gap:40px;
+  border:1px solid rgba(255,255,255,.07);
+}
+.footer-card::after{
+  content:"";position:absolute;width:330px;height:330px;border-radius:50%;right:-120px;bottom:-180px;
+  background:rgba(12,124,104,.28);filter:blur(60px);pointer-events:none;
+}
+.footer-brand{display:flex;align-items:center;gap:10px;font-size:11px;color:rgba(245,240,227,.5);letter-spacing:.08em;text-transform:uppercase}
+.footer-brand .brand-mark{background:rgba(255,255,255,.09);color:var(--cream);border:1px solid rgba(255,255,255,.1)}
+.footer-card h2{
+  margin:20px 0 0;font-size:clamp(1.55rem,3vw,2.25rem);line-height:1.35;
+  letter-spacing:-.03em;font-weight:700;
+}
+.footer-card h2 span{color:#f0c56e}
+.footer-note{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:flex-end;gap:12px;min-width:0}
+.footer-note p{margin:0;font-size:10px;line-height:1.8;color:rgba(245,240,227,.46)}
+.footer-note a{color:rgba(245,240,227,.7);text-underline-offset:3px;text-decoration-color:rgba(245,240,227,.25)}
+.footer-note a:hover{color:var(--cream)}
+.footer-top{display:inline-flex;align-items:center;gap:7px;align-self:flex-start;margin-top:3px;font-size:10px;font-weight:600;color:var(--cream);text-decoration:none;background:rgba(255,255,255,.075);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:7px 11px;transition:background .18s}
+.footer-top:hover{background:rgba(255,255,255,.12)}
+.footline{width:min(1180px,calc(100% - 48px));margin:0 auto 20px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:9px;color:var(--faint)}
+
+/* ---------- reveal ---------- */
+html.js .reveal{opacity:0;transform:translateY(16px);transition:opacity .72s cubic-bezier(.22,.65,.3,1),transform .72s cubic-bezier(.22,.65,.3,1)}
+html.js .reveal.in{opacity:1;transform:none}
+html.js .hero-copy.reveal{transition-delay:.05s}
+html.js .hero-visual.reveal{transition-delay:.12s}
+
+/* ---------- responsive ---------- */
+@media (max-width:1080px){
+  .hero-grid{gap:38px}
+  .hero h1{font-size:clamp(2.55rem,5.2vw,4.1rem)}
+  .lab-grid{grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr)}
+  .rho-grid{grid-template-columns:minmax(0,1.1fr) minmax(330px,.9fr)}
+  .lab-side{padding:17px 17px 14px}
+  .rho-controls{padding:17px}
+  .nav-links a{padding:7px 8px;font-size:12px}
+}
+
+@media (max-width:980px){
+  .hero{padding-top:48px}
+  .hero-grid{grid-template-columns:1fr;gap:34px}
+  .hero-copy{padding:0;max-width:640px}
+  .hero h1{max-width:12ch}
+  .hero-visual{min-height:410px;max-width:640px}
+  .hv-canvas{min-height:285px}
+  .lab-grid,.rho-grid{grid-template-columns:1fr}
+  .quote{margin-left:0}
+  .lab-side,.rho-controls{border-left:0;border-top:1px solid var(--line)}
+  .lab-side{padding:18px}
+  .rho-controls{display:grid;grid-template-columns:1fr 1fr;gap:14px 20px}
+  .controls-head,.rho-live,.identity-box,.matrix-box{grid-column:1/-1}
+  .slider-block{border-top:1px dashed var(--line)}
+  .matrix-box{margin-top:0}
+  .rho-wrap{min-height:470px}
+  .formula-anatomy{grid-template-columns:1fr;gap:22px;padding:28px}
+  .anatomy-list{display:grid;grid-template-columns:1fr 1fr;column-gap:22px}
+  .anatomy-list li:nth-child(1),.anatomy-list li:nth-child(2){border-bottom:1px solid rgba(255,255,255,.085)}
+  .anatomy-list li:nth-child(3){border-bottom:0}
+  .myth-card.wide{grid-template-columns:1fr 1fr;gap:18px}
+  .myth-card.wide .u-chart{height:300px}
+  .footer-card{grid-template-columns:1fr;gap:24px;padding:32px}
+  .footer-note{justify-content:flex-start}
+}
+
+@media (max-width:860px){
+  .nav-links{display:none}
+  .nav-in{gap:12px}
+  .nav-cta{margin-left:auto}
+  .section{padding:74px 0}
+  .section-head{grid-template-columns:56px minmax(0,1fr);gap:16px}
+  .sec-index{font-size:10px;padding-top:8px}
+}
+
+@media (max-width:760px){
+  .container,.nav-in,.footline{width:calc(100% - 32px)}
+  .hero{padding-top:38px}
+  .hero h1{font-size:clamp(2.35rem,9.4vw,3.25rem);letter-spacing:-.045em;margin-top:21px}
+  .hero-lede{font-size:14px}
+  .hero-formula{font-size:1rem;padding:10px 12px;margin:21px 0}
+  .hero-visual{min-height:370px;padding:12px;border-radius:22px}
+  .hv-canvas{min-height:245px}
+  .hv-note{display:none}
+  .mnemonic-grid{grid-template-columns:1fr}
+  .concept-card{padding:23px}
+  .card-glow{display:none}
+  .variance-doodle{opacity:.35;width:100px;bottom:54px}
+  .quadrant-card{grid-template-columns:1fr;padding:22px;gap:18px}
+  .quad-fig{order:2}
+  .takeaway{align-items:flex-start;flex-direction:column;gap:7px;padding:20px}
+  .quote-mark{display:none}
+  .takeaway-sub{margin-left:0;text-align:left;max-width:none}
+  .section-head{grid-template-columns:1fr;gap:8px}
+  .sec-index{border-top:0;padding-top:0;font-size:9px;margin-bottom:2px}
+  .section-head h2{max-width:16ch}
+  .lab-toolbar{padding:11px;gap:9px}
+  .preset-group,.toolbar-actions{gap:5px}
+  .toolbar-label{display:none}
+  .chip{padding:6px 9px;font-size:10px}
+  .canvas-wrap{min-height:380px}
+  .chart-pane{padding:10px}
+  .lab-side{padding:15px}
+  .stat-big{font-size:2.7rem}
+  .steps{grid-template-columns:1fr;gap:7px}
+  .rho-controls{grid-template-columns:1fr;padding:15px}
+  .rho-wrap{min-height:400px}
+  .controls-head,.rho-live,.slider-block,.identity-box,.matrix-box{grid-column:auto}
+  .slider-block{border-top:1px solid var(--line);padding-top:11px}
+  .rho-live b{font-size:1.35rem}
+  .formula-anatomy{padding:23px;border-radius:22px}
+  .big-formula{line-height:1.9}
+  .anatomy-list{grid-template-columns:1fr}
+  .anatomy-list li:nth-child(2){border-bottom:1px solid rgba(255,255,255,.085)}
+  .identity-grid{grid-template-columns:1fr}
+  .identity{padding:17px}
+  .myth-grid{grid-template-columns:1fr}
+  .myth-card.wide{grid-template-columns:1fr;gap:14px;padding:19px}
+  .myth-card.wide .u-chart{height:260px;order:2}
+  .myth-card{padding:19px}
+  .quiz-head{grid-template-columns:1fr auto!important}
+  .quiz-head .sec-index{grid-column:1/-1}
+  .quiz-head .quiz-score{grid-column:2;grid-row:2;align-self:center;margin-top:0}
+  .quiz-card{grid-template-columns:1fr;gap:9px;padding:16px}
+  .quiz-no{width:24px;height:24px}
+  .options{grid-template-columns:1fr}
+  .footer-card{padding:25px;border-radius:22px;gap:18px}
+  .footer-card h2{font-size:1.5rem}
+  .footline{justify-content:flex-start}
+}
+
+@media (max-width:520px){
+  .hero-actions{gap:8px}
+  .btn{padding:11px 17px;font-size:12.5px}
+  .hero-meta{gap:11px;margin-top:22px}
+  .hero-meta .meta-muted{display:none}
+  .hero-visual{min-height:345px}
+  .hv-canvas{min-height:218px}
+  .hv-r{font-size:9px}
+  .canvas-wrap{min-height:345px}
+  .canvas-note{font-size:8.5px}
+  .stat-big{font-size:2.5rem}
+  .contrib{grid-template-columns:20px minmax(0,1fr) 42px}
+  .overlay-chip{font-size:9px}
+  .rho-wrap{min-height:350px}
+  .rho-live{grid-template-columns:1fr 1fr}
+  .matrix{font-size:9.5px}
+  .matrix .bracket{font-size:31px}
+  .alt-formula{padding:11px 13px}
+  .alt-formula code{font-size:13.5px}
+  .quiz-card h3{font-size:.98rem}
+}
+
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+  html.js .reveal{opacity:1;transform:none}
+}
+</style>
+<script>document.documentElement.classList.add('js');</script>
+</head>
+<body id="top">
+<div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+
+<header class="nav">
+  <div class="nav-in">
+    <a class="brand" href="#top" aria-label="回到顶部">
+      <span class="brand-mark">Cov</span>
+      <span>协方差实验室</span>
+    </a>
+    <nav class="nav-links" aria-label="页面导航">
+      <a href="#intuition">直觉</a>
+      <a href="#lab-a">拖点实验室</a>
+      <a href="#lab-b">相关旋钮</a>
+      <a href="#formula">公式解剖</a>
+      <a href="#myths">误区</a>
+      <a href="#quiz">自测</a>
+    </nav>
+    <a class="nav-cta" href="#lab-a">开始动手 <span>→</span></a>
+  </div>
+</header>
+
+<main>
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-copy reveal">
+        <div class="eyebrow"><span class="pulse-dot"></span>概率论 · 互动笔记</div>
+        <h1>协方差，<br>两个变量是不是<br>在<span class="mark">一起</span>波动？</h1>
+        <p class="hero-lede">方差只关心一个变量自己有多“飘”；协方差关心两个变量，<strong>是不是朝同一个方向飘</strong>。拖一拖下面的点，公式就会跟着你一起变。</p>
+        <div class="hero-formula" aria-label="协方差公式：Cov(X,Y) 等于 E 乘以 X 减 EX 乘以 Y 减 EY">
+          <span class="fname">Cov</span>(<span class="fx">X</span>,&nbsp;<span class="fy">Y</span>)&nbsp;=&nbsp;<span class="fmean">E</span>[&nbsp;(<span class="fx">X</span>&nbsp;−&nbsp;<span class="fx">EX</span>)(<span class="fy">Y</span>&nbsp;−&nbsp;<span class="fy">EY</span>)]
+        </div>
+        <div class="hero-actions">
+          <a class="btn btn-dark" href="#lab-a">拖一拖，就懂了 <span aria-hidden="true">→</span></a>
+          <a class="btn btn-ghost" href="#intuition">先看直觉</a>
+        </div>
+        <div class="hero-meta">
+          <span><i class="dot teal"></i>同号 → 正贡献</span>
+          <span><i class="dot coral"></i>异号 → 负贡献</span>
+          <span class="meta-muted">纯前端 · 打开即用</span>
+        </div>
+      </div>
+
+      <div class="hero-visual reveal" aria-label="协方差动态点云演示">
+        <div class="hv-top">
+          <span class="live"><i></i>实时点云</span>
+          <span class="hv-r" id="heroR">r = +0.82</span>
+        </div>
+        <div class="hv-canvas" id="heroWrap">
+          <canvas id="heroCanvas" aria-label="散点图：随着相关系数变化，点云在同向、反向和无关之间摆动"></canvas>
+        </div>
+        <div class="hv-bottom">
+          <div class="hv-status"><i id="heroDot"></i><span id="heroStatus">正相关：一起偏大、一起偏小</span></div>
+          <span class="hv-note">ρ 正在缓慢摆动</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 01 INTUITION ============ -->
+  <section class="section" id="intuition">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="sec-index">01 / INTUITION</div>
+        <div>
+          <span class="kicker">先拆词</span>
+          <h2>“协”是结伴，<span class="nw">“方差”是波动</span></h2>
+          <p class="lede">协方差就是把“偏离均值”这件事从一个人变成两个人：各自先找基准线，再把两个偏离乘起来。英文 co-variance 里，co- 是“共同”，variance 是“波动”；乘积的符号，就是它们这次是“同向”还是“反向”。</p>
+        </div>
+      </div>
+
+      <div class="mnemonic-grid">
+        <article class="concept-card reveal">
+          <div class="card-top">
+            <span class="tag">单个变量</span>
+            <span class="glyph" aria-hidden="true">D</span>
+          </div>
+          <h3>方差 · 独自波动</h3>
+          <div class="mini-formula">D(<span class="fx">X</span>) = E[(<span class="fx">X</span> − <span class="fx">EX</span>)²]</div>
+          <p>只看 X 一个人：每次偏离均值多少，平方之后取平均。平方让正负偏离都算“波动大”，所以方差永远不小于 0。</p>
+          <div class="card-foot"><i class="dot teal"></i>自己跟自己比 · 量的是“散得开不开”</div>
+          <svg class="variance-doodle" viewBox="0 0 120 52" aria-hidden="true">
+            <line x1="6" y1="30" x2="114" y2="30" stroke="currentColor" stroke-opacity=".22" stroke-width="1" stroke-dasharray="3 4"/>
+            <line x1="60" y1="18" x2="60" y2="42" stroke="currentColor" stroke-opacity=".45" stroke-width="1"/>
+            <circle cx="18" cy="30" r="3.2" fill="currentColor" fill-opacity=".28"/>
+            <circle cx="31" cy="23" r="3.2" fill="currentColor" fill-opacity=".38"/>
+            <circle cx="47" cy="28" r="3.2" fill="currentColor" fill-opacity=".3"/>
+            <circle cx="65" cy="21" r="3.2" fill="currentColor" fill-opacity=".42"/>
+            <circle cx="79" cy="33" r="3.2" fill="currentColor" fill-opacity=".34"/>
+            <circle cx="96" cy="26" r="3.2" fill="currentColor" fill-opacity=".28"/>
+            <circle cx="108" cy="35" r="3.2" fill="currentColor" fill-opacity=".24"/>
+            <text x="53" y="12" font-size="8" fill="currentColor" fill-opacity=".5" font-family="Georgia, serif" font-style="italic">EX</text>
+          </svg>
+        </article>
+
+        <article class="concept-card dark reveal">
+          <div class="card-glow" aria-hidden="true"></div>
+          <div class="card-top">
+            <span class="tag">两个变量</span>
+            <span class="glyph" aria-hidden="true">Cov</span>
+          </div>
+          <h3>协方差 · 结伴波动</h3>
+          <div class="mini-formula">Cov(<span class="fx">X</span>, <span class="fy">Y</span>) = E[(<span class="fx">X</span> − <span class="fx">EX</span>)(<span class="fy">Y</span> − <span class="fy">EY</span>)]</div>
+          <p>把 X 的偏离和 Y 的偏离乘在一起。同号 → 正贡献，异号 → 负贡献，再取平均。正负抵消得越多，协方差越接近 0。</p>
+          <div class="card-foot"><i class="dot teal"></i>同向为正 <i class="dot coral" style="margin-left:5px"></i>反向为负 <span style="opacity:.65">· Cov(X,X)=D(X)</span></div>
+        </article>
+      </div>
+
+      <div class="quadrant-card reveal">
+        <div class="quad-copy">
+          <span class="kicker">几何直觉</span>
+          <h3>把每个点放进四个象限</h3>
+          <p>以均值点 (EX, EY) 为原点。每个点都用一个乘积投票：横向偏离和纵向偏离同号就投“正”，异号就投“负”。</p>
+          <div class="quad-table">
+            <div class="q q-pos"><i class="dot teal"></i>Ⅰ &amp; Ⅲ · 同号 → dx·dy &gt; 0 · 正贡献</div>
+            <div class="q q-neg"><i class="dot coral"></i>Ⅱ &amp; Ⅳ · 异号 → dx·dy &lt; 0 · 负贡献</div>
+          </div>
+          <p class="small">点云越偏向 Ⅰ / Ⅲ 两象限，协方差越正；越偏向 Ⅱ / Ⅳ，协方差越负。如果两边势均力敌，就会相互抵消。</p>
+        </div>
+        <div class="quad-fig">
+          <svg viewBox="0 0 560 390" role="img" aria-label="四个象限示意图：右上和左下同号贡献为正，左上和右下异号贡献为负">
+            <defs>
+              <filter id="qDotShadow" x="-60%" y="-60%" width="220%" height="220%">
+                <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#17211d" flood-opacity=".18"/>
+              </filter>
+            </defs>
+            <rect x="284" y="32" width="218" height="160" rx="10" fill="#0c7c68" opacity=".055"/>
+            <rect x="58" y="32" width="218" height="160" rx="10" fill="#c95a3c" opacity=".05"/>
+            <rect x="58" y="200" width="218" height="160" rx="10" fill="#0c7c68" opacity=".055"/>
+            <rect x="284" y="200" width="218" height="160" rx="10" fill="#c95a3c" opacity=".05"/>
+            <ellipse cx="280" cy="200" rx="158" ry="55" transform="rotate(-42 280 200)" fill="none" stroke="#0c7c68" stroke-opacity=".22" stroke-width="1.5" stroke-dasharray="5 6"/>
+
+            <line x1="44" y1="200" x2="516" y2="200" stroke="#17211d" stroke-opacity=".28" stroke-width="1.1"/>
+            <line x1="280" y1="22" x2="280" y2="374" stroke="#17211d" stroke-opacity=".28" stroke-width="1.1"/>
+            <path d="M510 200l-7-3.5v7z" fill="#17211d" fill-opacity=".3"/>
+            <path d="M280 28l-3.5 7h7z" fill="#17211d" fill-opacity=".3"/>
+            <text x="500" y="188" text-anchor="end" font-family="Georgia, serif" font-size="12" font-style="italic" fill="#66716a">EX</text>
+            <text x="289" y="45" font-family="Georgia, serif" font-size="12" font-style="italic" fill="#66716a">EY</text>
+
+            <text x="482" y="58" text-anchor="end" font-family="ui-monospace, Consolas, monospace" font-size="9.5" fill="#0c7c68" letter-spacing=".8">Ⅰ (+,+)</text>
+            <text x="78" y="58" font-family="ui-monospace, Consolas, monospace" font-size="9.5" fill="#c95a3c" letter-spacing=".8">Ⅱ (−,+)</text>
+            <text x="78" y="360" font-family="ui-monospace, Consolas, monospace" font-size="9.5" fill="#0c7c68" letter-spacing=".8">Ⅲ (−,−)</text>
+            <text x="482" y="360" text-anchor="end" font-family="ui-monospace, Consolas, monospace" font-size="9.5" fill="#c95a3c" letter-spacing=".8">Ⅳ (+,−)</text>
+            <text x="392" y="185" text-anchor="middle" font-family="ui-monospace, Consolas, monospace" font-size="8.5" fill="#0c7c68" opacity=".65">dx·dy &gt; 0</text>
+            <text x="168" y="185" text-anchor="middle" font-family="ui-monospace, Consolas, monospace" font-size="8.5" fill="#c95a3c" opacity=".65">dx·dy &lt; 0</text>
+            <text x="168" y="349" text-anchor="middle" font-family="ui-monospace, Consolas, monospace" font-size="8.5" fill="#0c7c68" opacity=".65">dx·dy &gt; 0</text>
+            <text x="392" y="349" text-anchor="middle" font-family="ui-monospace, Consolas, monospace" font-size="8.5" fill="#c95a3c" opacity=".65">dx·dy &lt; 0</text>
+
+            <g class="q-dot" filter="url(#qDotShadow)">
+              <circle cx="330" cy="152" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="372" cy="117" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="411" cy="92" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="304" cy="176" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="430" cy="135" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="362" cy="72" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+
+              <circle cx="170" cy="261" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="205" cy="238" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="240" cy="292" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="137" cy="306" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="186" cy="317" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+
+              <circle cx="190" cy="132" r="5.5" fill="#c95a3c" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="225" cy="101" r="5.5" fill="#c95a3c" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="153" cy="166" r="5.5" fill="#c95a3c" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="250" cy="139" r="5.5" fill="#c95a3c" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="348" cy="253" r="5.5" fill="#c95a3c" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="384" cy="282" r="5.5" fill="#c95a3c" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="421" cy="305" r="5.5" fill="#c95a3c" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="333" cy="319" r="5.5" fill="#c95a3c" stroke="#fffdf7" stroke-width="2"/>
+            </g>
+
+            <circle cx="280" cy="200" r="5" fill="#fffdf7" stroke="#17211d" stroke-width="1.6"/>
+            <line x1="272" y1="200" x2="288" y2="200" stroke="#17211d" stroke-width="1"/>
+            <line x1="280" y1="192" x2="280" y2="208" stroke="#17211d" stroke-width="1"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="takeaway reveal">
+        <span class="quote-mark" aria-hidden="true">“</span>
+        <p><strong>方差</strong>：独自波动；<strong>协方差</strong>：结伴波动。</p>
+        <span class="takeaway-sub">协方差 = 两个变量“共同偏离各自均值”的平均乘积。正负号说明方向，绝对值说明这种共同趋势的强弱（但会受量纲影响）。</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 02 LAB A ============ -->
+  <section class="section" id="lab-a">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="sec-index">02 / DRAG LAB</div>
+        <div>
+          <span class="kicker">拖点实验室</span>
+          <h2>每个点，都在为<span class="nw">协方差</span>“投票”</h2>
+          <p class="lede">拖动任意圆点，观察右侧数字怎么变。每个点的贡献，就是它到均值中心的横向偏离乘纵向偏离；所有贡献加起来再除以点数，就是协方差。</p>
+        </div>
+      </div>
+
+      <div class="lab-card reveal">
+        <div class="lab-toolbar">
+          <div class="preset-group" role="group" aria-label="预设数据">
+            <span class="toolbar-label">预设</span>
+            <button type="button" class="chip preset is-active" data-preset="positive"><i class="dot teal"></i>正相关</button>
+            <button type="button" class="chip preset" data-preset="negative"><i class="dot coral"></i>负相关</button>
+            <button type="button" class="chip preset" data-preset="zero"><i class="dot muted"></i>几乎无关</button>
+            <button type="button" class="chip preset" data-preset="quadratic"><i class="dot amber"></i>U 形陷阱</button>
+          </div>
+          <div class="toolbar-actions">
+            <label class="switch" for="rectToggle">
+              <input type="checkbox" id="rectToggle" checked>
+              <span class="switch-track" aria-hidden="true"></span>
+              <span>矩形面积</span>
+            </label>
+            <button type="button" class="chip" id="addPoint">＋ 添加点</button>
+            <button type="button" class="chip" id="playBtn">▶ 逐点累加</button>
+            <button type="button" class="icon-btn" id="resetA" title="重置当前预设" aria-label="重置当前预设">↺</button>
+          </div>
+        </div>
+
+        <div class="lab-grid">
+          <div class="chart-pane">
+            <div class="canvas-wrap" id="labWrap">
+              <canvas id="labCanvas" aria-label="可拖动散点图。拖动点改变位置，右侧显示协方差、相关系数和每个点的贡献。"></canvas>
+              <div class="play-badge" id="playBadge" hidden></div>
+              <div class="chart-tip" id="labTip" hidden></div>
+              <div class="canvas-note">按住圆点拖动 · 虚线是均值位置</div>
+            </div>
+            <div class="chart-foot">
+              <span>矩形面积 = dx · dy，带正负号</span>
+              <span class="legend"><span><i class="dot teal"></i>同号贡献为正</span><span><i class="dot coral"></i>异号贡献为负</span></span>
+            </div>
+          </div>
+
+          <aside class="lab-side">
+            <div class="stat-hero">
+              <div class="stat-label">协方差 Cov(X, Y)</div>
+              <div class="stat-big" id="covBig">+1.42</div>
+              <div class="status-pill" id="covStatus">正相关趋势</div>
+            </div>
+            <div class="mini-grid">
+              <div><span>D(X) · 方差</span><b id="varX">2.72</b></div>
+              <div><span>D(Y) · 方差</span><b id="varY">2.72</b></div>
+            </div>
+            <div class="r-block">
+              <div class="r-label"><span>相关系数 r</span><b id="rBig">+0.77</b></div>
+              <div class="r-track" aria-hidden="true"><span class="r-mid"></span><i id="rDot"></i></div>
+              <div class="r-scale"><span>−1</span><span>0</span><span>+1</span></div>
+            </div>
+            <div class="eq-box">
+              <span class="eq-label">计算</span>
+              <code id="eqLine">Σ(dx·dy) / n = 11.36 / 8 = 1.42</code>
+            </div>
+            <div class="contrib-head"><span>每个点的贡献</span><span>dx · dy</span></div>
+            <div class="contrib-list" id="contribList"></div>
+            <p class="sign-note" id="signNote">5 个正贡献，3 个负贡献 · 同号占多数</p>
+          </aside>
+        </div>
+      </div>
+
+      <div class="steps reveal">
+        <div class="step"><span class="n">01</span><div><b>找中心</b><p>两条虚线是 X̄ 和 Ȳ。它们把平面分成四个象限。</p></div></div>
+        <div class="step"><span class="n">02</span><div><b>乘偏离</b><p>横向偏离 dx 乘纵向偏离 dy，同号为正、异号为负。</p></div></div>
+        <div class="step"><span class="n">03</span><div><b>取平均</b><p>把所有带符号的面积加起来，再除以 n，就是协方差。</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 03 LAB B ============ -->
+  <section class="section" id="lab-b">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="sec-index">03 / CORRELATION</div>
+        <div>
+          <span class="kicker">相关旋钮</span>
+          <h2>把“结伴程度”变成<span class="nw">一个旋钮</span></h2>
+          <p class="lede">这里有一团由同一个随机种子生成的点。拖动 ρ 改变两个变量的共同趋势，再拖动 σ 改变各自的波动幅度。看看协方差和相关系数，谁会被量纲带着跑。</p>
+        </div>
+      </div>
+
+      <div class="lab-card reveal">
+        <div class="rho-grid">
+          <div class="chart-pane">
+            <div class="canvas-wrap rho-wrap" id="rhoWrap">
+              <canvas id="rhoCanvas" aria-label="可调节相关系数的散点图，点按所处象限正负着色"></canvas>
+              <div class="overlay-chip tl" id="rhoChip"><span class="rho-caret" style="background:var(--teal)"></span>ρ = +0.85</div>
+              <div class="overlay-chip tr">n = 260</div>
+              <div class="canvas-note">虚线椭圆 ≈ 2σ 等高线</div>
+            </div>
+            <div class="chart-foot">
+              <span>点云会随着 ρ 连续“倒向”</span>
+              <span class="legend"><span><i class="dot teal"></i>xy &gt; 0</span><span><i class="dot coral"></i>xy &lt; 0</span></span>
+            </div>
+          </div>
+
+          <aside class="rho-controls">
+            <div class="controls-head">
+              <h3>转动旋钮</h3>
+              <p>点云形状由三个参数决定：共同趋势 ρ，以及 X、Y 各自的波动幅度。</p>
+            </div>
+
+            <div class="rho-live">
+              <div><span>协方差 Cov</span><b class="pos" id="rhoCov">+1.63</b></div>
+              <div><span>相关系数 r</span><b class="pos" id="rhoR">+0.85</b></div>
+            </div>
+
+            <div class="slider-block">
+              <div class="slider-head">
+                <label for="rhoSlider">ρ <small>共同趋势</small></label>
+                <output id="rhoVal">+0.85</output>
+              </div>
+              <input id="rhoSlider" class="rho-range" type="range" min="-1" max="1" step="0.01" value="0.85" aria-label="相关系数 rho">
+              <div class="slider-ends"><span>−1 反向</span><span>0 无关</span><span>+1 同向</span></div>
+              <div class="quick-row">
+                <button type="button" class="mini-chip" data-rho="0.85">同向 +0.85</button>
+                <button type="button" class="mini-chip" data-rho="-0.75">反向 −0.75</button>
+                <button type="button" class="mini-chip" data-rho="0">几乎无关 0</button>
+              </div>
+            </div>
+
+            <div class="slider-block">
+              <div class="slider-head">
+                <label for="sigmaX">σ<sub>X</sub> <small>X 的波动</small></label>
+                <output id="sigmaXVal">1.60</output>
+              </div>
+              <input id="sigmaX" type="range" min="0.6" max="2.2" step="0.05" value="1.6" aria-label="X 的标准差">
+              <div class="slider-ends"><span>0.6 更集中</span><span>2.2 更分散</span></div>
+            </div>
+
+            <div class="slider-block">
+              <div class="slider-head">
+                <label for="sigmaY">σ<sub>Y</sub> <small>Y 的波动</small></label>
+                <output id="sigmaYVal">1.20</output>
+              </div>
+              <input id="sigmaY" type="range" min="0.6" max="2.2" step="0.05" value="1.2" aria-label="Y 的标准差">
+              <div class="slider-ends"><span>0.6 更集中</span><span>2.2 更分散</span></div>
+            </div>
+
+            <div class="identity-box">
+              <span>把旋钮的关系写成公式</span>
+              <code id="rhoIdentity">Cov = ρ · σX · σY = 0.85 × 1.60 × 1.20 ≈ 1.63</code>
+              <small>ρ 无量纲；协方差带“X 的单位 × Y 的单位”。</small>
+            </div>
+
+            <div class="matrix-box">
+              <div class="matrix-title">协方差矩阵 Σ</div>
+              <div class="matrix" aria-label="协方差矩阵：对角线上是方差，其余是协方差">
+                <span class="bracket" aria-hidden="true">[</span>
+                <div class="matrix-grid">
+                  <b id="mVarX">2.56</b><b id="mCov1">1.63</b>
+                  <b id="mCov2">1.63</b><b id="mVarY">1.44</b>
+                </div>
+                <span class="bracket" aria-hidden="true">]</span>
+              </div>
+              <small>对角线是方差，其余位置是协方差。</small>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <div class="rho-tip reveal">
+        <span class="tip-label">试试看</span>
+        <span>把 σ<sub>X</sub> 拉大：点云在横向上散开，<b>协方差跟着变大</b>，但<b>相关系数 r 纹丝不动</b>。这就是为什么比较“关系强弱”时，用消除了量纲的 ρ 更公平。</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 04 FORMULA ============ -->
+  <section class="section" id="formula">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="sec-index">04 / FORMULA</div>
+        <div>
+          <span class="kicker">公式解剖</span>
+          <h2>一行公式，四个动作</h2>
+          <p class="lede">别急着背。把 Cov(X,Y) = E[(X−EX)(Y−EY)] 拆成四步，每一步都能在上一张图里找到对应。</p>
+        </div>
+      </div>
+
+      <div class="formula-anatomy reveal">
+        <div class="formula-hero">
+          <span class="kicker">主公式</span>
+          <div class="big-formula">
+            <span class="fname">Cov</span>(<span class="fx">X</span>, <span class="fy">Y</span>) = <span class="fmean">E</span>[ (<span class="fx">X</span> − <span class="fx">EX</span>)(<span class="fy">Y</span> − <span class="fy">EY</span>)]
+          </div>
+          <div class="formula-caption">先各自偏离均值，再把两个偏离相乘，最后对乘积取期望（平均）。<br>协方差衡量的不是“数值大小”，而是“偏离方向是否一致”。</div>
+        </div>
+        <ol class="anatomy-list">
+          <li><span class="num">01</span><div><b>找两条基准线：EX 和 EY</b><p>均值是“各自的地心”。协方差关心的是每个点相对自己均值偏了多少，而不是它的绝对大小。</p></div></li>
+          <li><span class="num">02</span><div><b>各算一个偏离：<span class="fx">X−EX</span> 与 <span class="fy">Y−EY</span></b><p>横向偏离告诉你 X 这次偏大还是偏小，纵向偏离描述 Y。正负号已经藏在里面了。</p></div></li>
+          <li><span class="num">03</span><div><b>把两个偏离相乘</b><p>同号相乘为正：这次“一起偏大”或“一起偏小”；异号为负：一个偏大、一个偏小。乘积就是每个点的投票。</p></div></li>
+          <li><span class="num">04</span><div><b>E[·] 取期望</b><p>把所有点的带符号乘积平均。正票多，协方差为正；负票多，协方差为负；势均力敌，就接近 0。</p></div></li>
+        </ol>
+      </div>
+
+      <div class="identity-grid reveal">
+        <article class="identity">
+          <span class="tag">名字对上了</span>
+          <h3>Cov(X, X) = D(X)</h3>
+          <p>自己和自己“结伴”，乘积变成偏离的平方，平均起来正是方差。方差只是协方差的特例。</p>
+        </article>
+        <article class="identity">
+          <span class="tag">考试常用</span>
+          <h3>Cov(aX+b, cY+d) = ac · Cov(X,Y)</h3>
+          <p>加减常数只是整体平移，不改变偏离；乘常数会等比缩放偏离，两个缩放系数相乘。</p>
+        </article>
+        <article class="identity">
+          <span class="tag">和与差</span>
+          <h3>D(X ± Y) = D(X) + D(Y) ± 2Cov(X,Y)</h3>
+          <p>协方差就是两个变量相加时的“交叉项”。相互独立时它等于 0，方差才简单相加。</p>
+        </article>
+        <article class="identity">
+          <span class="tag">去掉量纲</span>
+          <h3>ρ = Cov(X,Y) / (σ<sub>X</sub>σ<sub>Y</sub>)</h3>
+          <p>把协方差按两个标准差标准化，得到 [−1, 1] 之间的相关系数。ρ 只描述线性相关，不带单位。</p>
+        </article>
+      </div>
+
+      <div class="alt-formula reveal">
+        <code>Cov(X, Y) = E(XY) − EX · EY</code>
+        <span>等价的常用写法，很多计算题直接套它更快。</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 05 MYTHS ============ -->
+  <section class="section" id="myths">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="sec-index">05 / TRAPS</div>
+        <div>
+          <span class="kicker">三个常见误区</span>
+          <h2>协方差会“骗人”的<span class="nw">地方</span></h2>
+          <p class="lede">它不是万能的相似度。协方差只抓线性趋势，还带着量纲，更不能告诉你谁导致谁。</p>
+        </div>
+      </div>
+
+      <div class="myth-grid">
+        <article class="myth-card wide reveal">
+          <div class="myth-copy">
+            <span class="tag warn">最容易错</span>
+            <h3>Cov = 0，不代表独立</h3>
+            <p>协方差只抓“线性趋势”。下面这条 U 形关系是 <b>Y = X² + 噪声</b>：Y 明明由 X 决定，但左右两臂的正负贡献互相抵消，协方差接近 0。独立一定不相关，不相关却不一定独立。</p>
+            <div class="myth-stats">
+              <span>Cov ≈ <b id="uCov">0.00</b></span>
+              <span>r ≈ <b id="uR">0.00</b></span>
+              <span class="ok">但 Y 由 X 决定</span>
+            </div>
+            <button type="button" class="chip" id="uResample">↻ 换一组样本</button>
+          </div>
+          <div class="u-chart">
+            <canvas id="uCanvas" aria-label="U 形散点图：协方差接近零，但两个变量明显不独立"></canvas>
+            <div class="u-chip">Y = X² + 噪声</div>
+          </div>
+        </article>
+
+        <article class="myth-card reveal">
+          <span class="tag">量纲陷阱</span>
+          <h3>数值大 ≠ 关系强</h3>
+          <p>把 X 的单位从“米”换成“厘米”，每个数乘 100，协方差也直接乘 100，但两个变量的关系一点没变强。这就是为什么要看 ρ。</p>
+          <div class="scale-demo">
+            <div class="scale-row"><span>X 的单位：米</span><b>Cov = c</b></div>
+            <div class="scale-arrow">× 100 <span style="color:var(--faint);font-weight:400">单位换算</span></div>
+            <div class="scale-row"><span>X 的单位：厘米</span><b>Cov = 100c</b></div>
+            <div class="scale-pill"><i class="dot teal"></i>ρ 仍然是同一个值</div>
+          </div>
+        </article>
+
+        <article class="myth-card reveal">
+          <span class="tag">因果陷阱</span>
+          <h3>相关 ≠ 因果</h3>
+          <p>两个变量一起变，可能只是都被第三个变量带着走。协方差能告诉你“同步”，却不能告诉你“谁导致谁”。</p>
+          <div class="cause-demo">
+            <div class="cause-top"><span>冰淇淋销量</span><i>＋＋</i><span>溺水人数</span></div>
+            <div class="cause-line"><span>夏天一起上升</span></div>
+            <div class="cause-bottom"><b>真正的推手：气温</b><span>一个隐藏的第三变量</span></div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 06 QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="container">
+      <div class="section-head quiz-head reveal">
+        <div class="sec-index">06 / CHECK</div>
+        <div>
+          <span class="kicker">自测</span>
+          <h2>四道题，检验<span class="nw">“真的懂了”</span></h2>
+          <p class="lede">选一个答案，马上看解释。答错也没关系，回到上面的图里找线索，比背结论有用。</p>
+        </div>
+        <div class="quiz-score" id="quizScore" aria-live="polite">0 / 4</div>
+      </div>
+
+      <div class="quiz-list">
+        <article class="quiz-card reveal" data-answer="a">
+          <div class="quiz-no">Q1</div>
+          <div class="quiz-body">
+            <h3>“当 X 比均值大时，Y 往往也比均值大”，这最直接对应下面哪一句？</h3>
+            <div class="options">
+              <button type="button" class="opt" data-opt="a"><span class="key">A</span><span>Cov(X,Y) &gt; 0</span></button>
+              <button type="button" class="opt" data-opt="b"><span class="key">B</span><span>X 与 Y 相互独立</span></button>
+              <button type="button" class="opt" data-opt="c"><span class="key">C</span><span>D(X) &gt; D(Y)</span></button>
+              <button type="button" class="opt" data-opt="d"><span class="key">D</span><span>Cov(X,Y) = 0</span></button>
+            </div>
+            <div class="explain"><b>为什么</b><p>同向偏离时，(X−EX)(Y−EY) 多为正，平均起来协方差就为正。协方差首先告诉你方向，而不是“谁一定跟着谁变”。</p></div>
+          </div>
+        </article>
+
+        <article class="quiz-card reveal" data-answer="d">
+          <div class="quiz-no">Q2</div>
+          <div class="quiz-body">
+            <h3>已知 Cov(X,Y) = 2，则 Cov(3X−1, −2Y+5) 等于？</h3>
+            <div class="options">
+              <button type="button" class="opt" data-opt="a"><span class="key">A</span><span>6</span></button>
+              <button type="button" class="opt" data-opt="b"><span class="key">B</span><span>−6</span></button>
+              <button type="button" class="opt" data-opt="c"><span class="key">C</span><span>12</span></button>
+              <button type="button" class="opt" data-opt="d"><span class="key">D</span><span>−12</span></button>
+            </div>
+            <div class="explain"><b>为什么</b><p>平移不改变偏离，缩放系数要相乘：Cov(aX+b, cY+d) = ac·Cov(X,Y) = 3×(−2)×2 = −12。负号来自两个变量方向相反地缩放。</p></div>
+          </div>
+        </article>
+
+        <article class="quiz-card reveal" data-answer="b">
+          <div class="quiz-no">Q3</div>
+          <div class="quiz-body">
+            <h3>若 Cov(X,Y) = 0，下面哪句话最准确？</h3>
+            <div class="options">
+              <button type="button" class="opt" data-opt="a"><span class="key">A</span><span>X 与 Y 一定相互独立</span></button>
+              <button type="button" class="opt" data-opt="b"><span class="key">B</span><span>没有线性相关趋势，但不一定独立</span></button>
+              <button type="button" class="opt" data-opt="c"><span class="key">C</span><span>X、Y 的方差一定都为 0</span></button>
+              <button type="button" class="opt" data-opt="d"><span class="key">D</span><span>X 与 Y 的变化方向一定相反</span></button>
+            </div>
+            <div class="explain"><b>为什么</b><p>协方差只捕捉线性关系。Y = X² 就是反例：Cov ≈ 0，但 X 完全决定了 Y。独立 ⇒ 协方差为 0；协方差为 0 ⇏ 独立。</p></div>
+          </div>
+        </article>
+
+        <article class="quiz-card reveal" data-answer="b">
+          <div class="quiz-no">Q4</div>
+          <div class="quiz-body">
+            <h3>把 X 的单位从米换成厘米（数值 ×100），Y 不变。下面会发生什么？</h3>
+            <div class="options">
+              <button type="button" class="opt" data-opt="a"><span class="key">A</span><span>Cov 和 ρ 都乘 100</span></button>
+              <button type="button" class="opt" data-opt="b"><span class="key">B</span><span>Cov 乘 100，ρ 不变</span></button>
+              <button type="button" class="opt" data-opt="c"><span class="key">C</span><span>Cov 不变，ρ 乘 100</span></button>
+              <button type="button" class="opt" data-opt="d"><span class="key">D</span><span>两者都不变</span></button>
+            </div>
+            <div class="explain"><b>为什么</b><p>Cov(100X, Y) = 100·Cov(X,Y)，协方差带量纲；ρ 已经除以 σXσY，单位被约掉，所以保持不变。</p></div>
+          </div>
+        </article>
+      </div>
+
+      <div class="quiz-result" id="quizResult" role="status"></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="container">
+    <div class="footer-card">
+      <div>
+        <div class="footer-brand"><span class="brand-mark">Cov</span>概率论 · 互动笔记</div>
+        <h2>方差：独自波动。<br><span>协方差：结伴波动。</span></h2>
+      </div>
+      <div class="footer-note">
+        <p>本页用总体形式 1/n 计算，方便和 E[·] 对应；样本协方差通常除以 n−1，不改变符号和直觉。</p>
+        <p>参考：<a href="https://zh.wikipedia.org/wiki/%E5%8D%8F%E6%96%B9%E5%B7%AE" target="_blank" rel="noopener noreferrer">Wikipedia · 协方差</a> · <a href="https://www.khanacademy.org/math/statistics-probability/describing-relationships-quantitative-data/more-on-correlation/a/covariance-and-correlation" target="_blank" rel="noopener noreferrer">Khan Academy · Covariance</a> · <a href="https://math.stackexchange.com/questions/4194711/confused-about-zero-covariance-and-independence" target="_blank" rel="noopener noreferrer">零协方差与独立</a></p>
+        <a class="footer-top" href="#top">回到顶部 ↑</a>
+      </div>
+    </div>
+    <div class="footline">
+      <span>协方差实验室 · 给概率论一个能动手的注脚</span>
+      <span>拖动、观察、再自己解释一遍</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ------------------------------------------------------------
+     helpers
+  ------------------------------------------------------------ */
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+  const TAU = Math.PI * 2;
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const meanOf = (arr) => (arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : 0);
+
+  const C = {
+    ink: '#17211d',
+    ink2: '#2a3832',
+    muted: '#66716a',
+    faint: '#96a098',
+    line: '#ded9cc',
+    surface: '#fffdf7',
+    teal: '#0c7c68',
+    coral: '#c95a3c',
+    amber: '#dda02e',
+    tealLight: '#5edfc3',
+    coralLight: '#ff9f7d',
+    cream: '#f5f0e3'
+  };
+  const FONT_UI = '"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif';
+  const FONT_MONO = '"Cascadia Code",Consolas,"SFMono-Regular",monospace';
+  const FONT_SERIF = 'Georgia,"Times New Roman","Songti SC",serif';
+
+  function mulberry32(a) {
+    return function () {
+      a |= 0;
+      a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function gaussian(rng) {
+    let u = 0;
+    let v = 0;
+    while (u === 0) u = rng();
+    while (v === 0) v = rng();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * v);
+  }
+
+  function centerStandardize(arr) {
+    const m = meanOf(arr);
+    let ss = 0;
+    for (let i = 0; i < arr.length; i++) {
+      arr[i] -= m;
+      ss += arr[i] * arr[i];
+    }
+    const sd = Math.sqrt(ss / arr.length) || 1;
+    for (let i = 0; i < arr.length; i++) arr[i] /= sd;
+    return arr;
+  }
+
+  // A pair of sample vectors with mean 0, sample variance 1 and zero sample covariance.
+  function orthogonalBases(n, seed) {
+    const rng = mulberry32(seed);
+    const a = [];
+    const b = [];
+    for (let i = 0; i < n; i++) {
+      a.push(gaussian(rng));
+      b.push(gaussian(rng));
+    }
+    centerStandardize(a);
+    centerStandardize(b);
+
+    let dot = 0;
+    let aa = 0;
+    for (let i = 0; i < n; i++) {
+      dot += a[i] * b[i];
+      aa += a[i] * a[i];
+    }
+    const k = dot / (aa || 1);
+    for (let i = 0; i < n; i++) b[i] -= k * a[i];
+    centerStandardize(b);
+
+    return a.map((v, i) => ({ a: v, b: b[i] }));
+  }
+
+  function f2(v) {
+    if (!Number.isFinite(v)) return '—';
+    let s = v.toFixed(2);
+    if (s === '-0.00') s = '0.00';
+    return s;
+  }
+
+  function sf2(v) {
+    if (!Number.isFinite(v)) return '—';
+    const s = f2(v);
+    return v > 0.005 ? '+' + s : s;
+  }
+
+  function signClass(v, eps = 0.005) {
+    return v > eps ? 'pos' : v < -eps ? 'neg' : 'zero';
+  }
+
+  function calcStats(points) {
+    const n = points.length;
+    if (!n) {
+      return { n: 0, mx: 0, my: 0, sum: 0, cov: 0, vx: 0, vy: 0, r: 0, pos: 0, neg: 0, items: [] };
+    }
+    let mx = 0;
+    let my = 0;
+    for (const p of points) {
+      mx += p.x;
+      my += p.y;
+    }
+    mx /= n;
+    my /= n;
+
+    let sum = 0;
+    let vx = 0;
+    let vy = 0;
+    let pos = 0;
+    let neg = 0;
+    const items = new Array(n);
+
+    for (let i = 0; i < n; i++) {
+      const dx = points[i].x - mx;
+      const dy = points[i].y - my;
+      const prod = dx * dy;
+      sum += prod;
+      vx += dx * dx;
+      vy += dy * dy;
+      if (prod > 1e-9) pos++;
+      else if (prod < -1e-9) neg++;
+      items[i] = { dx, dy, prod };
+    }
+    const cov = sum / n;
+    vx /= n;
+    vy /= n;
+    const r = vx > 1e-12 && vy > 1e-12 ? cov / Math.sqrt(vx * vy) : 0;
+    return { n, mx, my, sum, cov, vx, vy, r, pos, neg, items };
+  }
+
+  function mountCanvas(canvas, wrap, draw) {
+    const ctx = canvas.getContext('2d');
+    const state = { ctx, w: 0, h: 0, dpr: 1 };
+
+    function resize() {
+      const rect = wrap.getBoundingClientRect();
+      if (rect.width < 8 || rect.height < 8) return;
+      const w = Math.round(rect.width);
+      const h = Math.round(rect.height);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      state.w = w;
+      state.h = h;
+      state.dpr = dpr;
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      draw(state);
+    }
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(resize);
+      ro.observe(wrap);
+    } else {
+      window.addEventListener('resize', resize);
+    }
+    resize();
+    return state;
+  }
+
+  function clipPlot(ctx, x, y, w, h) {
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.clip();
+  }
+
+  /* ------------------------------------------------------------
+     02 · drag lab
+  ------------------------------------------------------------ */
+  const labCanvas = $('#labCanvas');
+  const labWrap = $('#labWrap');
+  const labTip = $('#labTip');
+  const playBadge = $('#playBadge');
+  const playBtn = $('#playBtn');
+  const addPointBtn = $('#addPoint');
+  const rectToggle = $('#rectToggle');
+  const covBig = $('#covBig');
+  const covStatus = $('#covStatus');
+  const varXEl = $('#varX');
+  const varYEl = $('#varY');
+  const rBig = $('#rBig');
+  const rDot = $('#rDot');
+  const eqLine = $('#eqLine');
+  const signNote = $('#signNote');
+  const contribList = $('#contribList');
+
+  const labState = {
+    points: [],
+    preset: 'positive',
+    hover: -1,
+    drag: -1,
+    showRects: true,
+    playing: false,
+    playIndex: 0,
+    playSum: 0,
+    playTimer: null,
+    rows: [],
+    geom: null,
+    lastStats: null
+  };
+
+  function makeLabPreset(kind) {
+    const seeds = { positive: 19, negative: 3, zero: 3037, quadratic: 4051 };
+    const rng = mulberry32(seeds[kind] || 19);
+    const n = kind === 'quadratic' ? 11 : 10;
+    const pts = [];
+
+    if (kind === 'quadratic') {
+      for (let i = 0; i < n; i++) {
+        const x = -2.8 + (i * 5.6) / (n - 1) + (rng() - 0.5) * 0.38;
+        const y = 0.52 * x * x - 1.95 + (rng() - 0.5) * 0.25;
+        pts.push({ x, y });
+      }
+    } else {
+      for (let i = 0; i < n; i++) {
+        const x = gaussian(rng);
+        const noise = gaussian(rng);
+        let y;
+        if (kind === 'positive') y = 0.95 * x + 0.62 * noise;
+        else if (kind === 'negative') y = -0.95 * x + 0.62 * noise;
+        else y = noise;
+        pts.push({ x, y });
+      }
+    }
+
+    // Center the cloud on its own mean.
+    const mx = meanOf(pts.map((p) => p.x));
+    const my = meanOf(pts.map((p) => p.y));
+    for (const p of pts) {
+      p.x -= mx;
+      p.y -= my;
+    }
+
+    // For the "almost independent" preset, make the sample covariance exactly zero.
+    if (kind === 'zero') {
+      let sxy = 0;
+      let sxx = 0;
+      for (const p of pts) {
+        sxy += p.x * p.y;
+        sxx += p.x * p.x;
+      }
+      const k = sxy / (sxx || 1);
+      for (const p of pts) p.y -= k * p.x;
+    }
+
+    const sx = Math.sqrt(meanOf(pts.map((p) => p.x * p.x))) || 1;
+    const sy = Math.sqrt(meanOf(pts.map((p) => p.y * p.y))) || 1;
+    const targetX = 1.62;
+    const targetY = kind === 'quadratic' ? 1.42 : 1.48;
+
+    return pts.map((p) => ({
+      x: clamp((p.x / sx) * targetX, -4.05, 4.05),
+      y: clamp((p.y / sy) * targetY, -4.05, 4.05)
+    }));
+  }
+
+  function buildContribRows() {
+    labState.rows = [];
+    contribList.innerHTML = '';
+    labState.points.forEach((p, i) => {
+      const row = document.createElement('div');
+      row.className = 'contrib';
+      row.tabIndex = 0;
+      row.innerHTML =
+        '<span class="contrib-idx">' + String(i + 1).padStart(2, '0') + '</span>' +
+        '<span class="contrib-bar"><i></i></span>' +
+        '<span class="contrib-val"></span>';
+
+      const enter = () => {
+        if (labState.drag >= 0) return;
+        labState.hover = i;
+        if (labStage) drawLab(labStage);
+        showLabTip(i);
+      };
+      const leave = () => {
+        if (labState.drag >= 0) return;
+        if (labState.hover === i) {
+          labState.hover = -1;
+          if (labStage) drawLab(labStage);
+          hideLabTip();
+        }
+      };
+
+      row.addEventListener('pointerenter', enter);
+      row.addEventListener('pointerleave', leave);
+      row.addEventListener('focus', enter);
+      row.addEventListener('blur', leave);
+      contribList.appendChild(row);
+      labState.rows.push({
+        row,
+        bar: row.querySelector('.contrib-bar i'),
+        val: row.querySelector('.contrib-val')
+      });
+    });
+  }
+
+  function syncLabUI(st) {
+    const covCls = signClass(st.cov, 0.005);
+    covBig.textContent = sf2(st.cov);
+    covBig.className = 'stat-big ' + covCls;
+
+    const neutral = Math.abs(st.r) < 0.08;
+    covStatus.textContent = neutral ? '几乎没有线性趋势' : st.r > 0 ? '正相关趋势' : '负相关趋势';
+    covStatus.className = 'status-pill ' + (neutral ? 'zero' : signClass(st.r, 0));
+
+    varXEl.textContent = f2(st.vx);
+    varYEl.textContent = f2(st.vy);
+    rBig.textContent = sf2(st.r);
+    rDot.style.left = clamp(((st.r + 1) / 2) * 100, 2, 98) + '%';
+    rDot.style.background = st.r >= 0 ? C.teal : C.coral;
+    eqLine.textContent = 'Σ(dx·dy) / n = ' + sf2(st.sum) + ' / ' + st.n + ' = ' + sf2(st.cov);
+
+    let note = st.pos + ' 个正贡献，' + st.neg + ' 个负贡献';
+    if (neutral) note += ' · 正负几乎抵消';
+    else if (st.r > 0) note += ' · 同号占多数';
+    else note += ' · 异号占多数';
+    signNote.textContent = note;
+
+    let maxAbs = 0.0001;
+    for (const it of st.items) maxAbs = Math.max(maxAbs, Math.abs(it.prod));
+
+    labState.rows.forEach((row, i) => {
+      const it = st.items[i];
+      if (!it) return;
+      const widthPct = Math.max(1.5, (Math.abs(it.prod) / maxAbs) * 50);
+      row.bar.style.width = widthPct + '%';
+      row.bar.style.left = (it.prod >= 0 ? 50 : 50 - widthPct) + '%';
+      row.bar.className = it.prod >= 0 ? 'pos' : 'neg';
+      row.val.textContent = sf2(it.prod);
+      row.val.className = 'contrib-val ' + (it.prod >= 0 ? 'pos' : 'neg');
+      row.row.className = 'contrib' + (i === labState.hover ? ' active' : '');
+      row.row.setAttribute('aria-label', '第 ' + (i + 1) + ' 个点，贡献 ' + sf2(it.prod));
+    });
+  }
+
+  function drawLab(s) {
+    const ctx = s.ctx;
+    const w = s.w;
+    const h = s.h;
+    ctx.clearRect(0, 0, w, h);
+
+    const st = calcStats(labState.points);
+    labState.lastStats = st;
+
+    const pad = { l: 24, r: 20, t: 22, b: 24 };
+    const plotW = Math.max(1, w - pad.l - pad.r);
+    const plotH = Math.max(1, h - pad.t - pad.b);
+    const domain = 4.4;
+    const X = (x) => pad.l + ((x + domain) / (domain * 2)) * plotW;
+    const Y = (y) => h - pad.b - ((y + domain) / (domain * 2)) * plotH;
+    const mx = X(st.mx);
+    const my = Y(st.my);
+    labState.geom = { X, Y, pad, plotW, plotH, domain, w, h };
+
+    ctx.save();
+    clipPlot(ctx, pad.l, pad.t, plotW, plotH);
+
+    // Quadrant tints, relative to the current mean.
+    const rightW = Math.max(0, pad.l + plotW - mx);
+    const leftW = Math.max(0, mx - pad.l);
+    const topH = Math.max(0, my - pad.t);
+    const botH = Math.max(0, pad.t + plotH - my);
+
+    ctx.fillStyle = 'rgba(12,124,104,.032)';
+    if (rightW > 0 && topH > 0) ctx.fillRect(mx, pad.t, rightW, topH);
+    if (leftW > 0 && botH > 0) ctx.fillRect(pad.l, my, leftW, botH);
+    ctx.fillStyle = 'rgba(201,90,60,.028)';
+    if (leftW > 0 && topH > 0) ctx.fillRect(pad.l, pad.t, leftW, topH);
+    if (rightW > 0 && botH > 0) ctx.fillRect(mx, my, rightW, botH);
+
+    // Quiet unit grid.
+    ctx.strokeStyle = 'rgba(23,33,29,.045)';
+    ctx.lineWidth = 1;
+    for (let i = -4; i <= 4; i++) {
+      const gx = Math.round(X(i)) + 0.5;
+      const gy = Math.round(Y(i)) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(gx, pad.t);
+      ctx.lineTo(gx, pad.t + plotH);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(pad.l, gy);
+      ctx.lineTo(pad.l + plotW, gy);
+      ctx.stroke();
+    }
+
+    // Signed rectangles.
+    if (labState.showRects) {
+      st.items.forEach((it, i) => {
+        const p = labState.points[i];
+        const px = X(p.x);
+        const py = Y(p.y);
+        const x0 = Math.min(mx, px);
+        const y0 = Math.min(my, py);
+        const rw = Math.abs(px - mx);
+        const rh = Math.abs(py - my);
+        if (rw < 0.6 || rh < 0.6) return;
+
+        const active = i === labState.hover;
+        const dim = labState.playing && !active;
+        const positive = it.prod >= 0;
+        const fillAlpha = dim ? 0.014 : active ? 0.17 : 0.043;
+        const strokeAlpha = dim ? 0.05 : active ? 0.72 : 0.28;
+
+        ctx.fillStyle = positive
+          ? 'rgba(12,124,104,' + fillAlpha + ')'
+          : 'rgba(201,90,60,' + fillAlpha + ')';
+        ctx.fillRect(x0, y0, rw, rh);
+
+        ctx.strokeStyle = positive
+          ? 'rgba(12,124,104,' + strokeAlpha + ')'
+          : 'rgba(201,90,60,' + strokeAlpha + ')';
+        ctx.lineWidth = active ? 1.5 : 1;
+        ctx.setLineDash(active ? [] : [4, 4]);
+        ctx.strokeRect(x0 + 0.5, y0 + 0.5, Math.max(0, rw - 1), Math.max(0, rh - 1));
+        ctx.setLineDash([]);
+      });
+    }
+
+    // Mean lines.
+    ctx.setLineDash([5, 5]);
+    ctx.strokeStyle = 'rgba(23,33,29,.34)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(mx, pad.t);
+    ctx.lineTo(mx, pad.t + plotH);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(pad.l, my);
+    ctx.lineTo(pad.l + plotW, my);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Small quadrant marks.
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '500 14px ' + FONT_SERIF;
+    const marks = [
+      ['+', pad.l + plotW - 17, pad.t + 17, 'rgba(12,124,104,.26)'],
+      ['−', pad.l + 17, pad.t + 17, 'rgba(201,90,60,.23)'],
+      ['+', pad.l + 17, pad.t + plotH - 17, 'rgba(12,124,104,.26)'],
+      ['−', pad.l + plotW - 17, pad.t + plotH - 17, 'rgba(201,90,60,.23)']
+    ];
+    for (const [txt, x, y, color] of marks) {
+      ctx.fillStyle = color;
+      ctx.fillText(txt, x, y);
+    }
+
+    // Points and their hover halo.
+    st.items.forEach((it, i) => {
+      const p = labState.points[i];
+      const px = X(p.x);
+      const py = Y(p.y);
+      const active = i === labState.hover;
+      const dim = labState.playing && !active;
+      const color = it.prod > 1e-9 ? C.teal : it.prod < -1e-9 ? C.coral : '#8b948d';
+
+      if (active) {
+        ctx.globalAlpha = 0.14;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(px, py, 17, 0, TAU);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+
+      ctx.globalAlpha = dim ? 0.27 : labState.hover >= 0 && !active ? 0.78 : 1;
+      ctx.beginPath();
+      ctx.arc(px, py, active ? 8 : 6.4, 0, TAU);
+      ctx.fillStyle = color;
+      ctx.shadowColor = 'rgba(23,33,29,.16)';
+      ctx.shadowBlur = 7;
+      ctx.shadowOffsetY = 2;
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = C.surface;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    });
+
+    // Mean cross.
+    ctx.strokeStyle = 'rgba(23,33,29,.55)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(mx - 8, my);
+    ctx.lineTo(mx + 8, my);
+    ctx.moveTo(mx, my - 8);
+    ctx.lineTo(mx, my + 8);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(mx, my, 4, 0, TAU);
+    ctx.fillStyle = C.surface;
+    ctx.fill();
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    ctx.restore();
+
+    // Labels outside the clipped plot.
+    ctx.font = '500 10px ' + FONT_MONO;
+    ctx.fillStyle = C.muted;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText('x̄', clamp(mx + 5, pad.l, pad.l + plotW - 14), pad.t + 11);
+    ctx.textAlign = 'right';
+    ctx.fillText('ȳ', clamp(pad.l - 4, 3, w - 4), clamp(my - 5, pad.t + 10, pad.t + plotH));
+
+    ctx.font = '500 8.5px ' + FONT_MONO;
+    ctx.fillStyle = 'rgba(23,33,29,.32)';
+    ctx.textAlign = 'right';
+    ctx.fillText('X →', pad.l + plotW, h - 5);
+    ctx.textAlign = 'left';
+    ctx.fillText('Y ↑', 4, pad.t + 9);
+
+    syncLabUI(st);
+  }
+
+  function pointerPosOnLab(e) {
+    const rect = labCanvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  const LAB_HIT_R = window.matchMedia && window.matchMedia('(pointer: coarse)').matches ? 26 : 18;
+
+  function pickLabPoint(px, py) {
+    const g = labState.geom;
+    if (!g) return -1;
+    let best = -1;
+    let bestD = LAB_HIT_R * LAB_HIT_R;
+    labState.points.forEach((p, i) => {
+      const dx = g.X(p.x) - px;
+      const dy = g.Y(p.y) - py;
+      const d = dx * dx + dy * dy;
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    });
+    return best;
+  }
+
+  function labDataFromPixels(px, py) {
+    const g = labState.geom;
+    if (!g) return { x: 0, y: 0 };
+    let x = ((px - g.pad.l) / g.plotW) * 2 * g.domain - g.domain;
+    let y = g.domain - ((py - g.pad.t) / g.plotH) * 2 * g.domain;
+    x = Math.round(x * 20) / 20;
+    y = Math.round(y * 20) / 20;
+    return { x: clamp(x, -4.15, 4.15), y: clamp(y, -4.15, 4.15) };
+  }
+
+  function showLabTip(i) {
+    const g = labState.geom;
+    if (!g || i < 0 || i >= labState.points.length) {
+      hideLabTip();
+      return;
+    }
+    const st = labState.lastStats || calcStats(labState.points);
+    const it = st.items[i];
+    const p = labState.points[i];
+    if (!it) {
+      hideLabTip();
+      return;
+    }
+    const px = g.X(p.x);
+    const py = g.Y(p.y);
+    const below = py < 75;
+    const margin = Math.min(100, Math.max(45, g.w / 2 - 8));
+
+    labTip.classList.toggle('below', below);
+    labTip.style.left = clamp(px, margin, g.w - margin) + 'px';
+    labTip.style.top = clamp(py, 18, g.h - 18) + 'px';
+    labTip.innerHTML =
+      '<span class="tip-muted">点 ' + (i + 1) + '</span><br>' +
+      '<b>dx = ' + sf2(it.dx) + '</b> · <b>dy = ' + sf2(it.dy) + '</b><br>' +
+      '乘积 <span class="' + (it.prod >= 0 ? 'tip-pos' : 'tip-neg') + '">' + sf2(it.prod) +
+      '</span> <span class="tip-muted">' + (it.prod >= 0 ? '正贡献' : '负贡献') + '</span>';
+    labTip.hidden = false;
+  }
+
+  function hideLabTip() {
+    labTip.hidden = true;
+  }
+
+  function stopLabPlay(silent) {
+    if (labState.playTimer) {
+      clearTimeout(labState.playTimer);
+      labState.playTimer = null;
+    }
+    const was = labState.playing;
+    labState.playing = false;
+    labState.hover = -1;
+    playBtn.textContent = '▶ 逐点累加';
+    playBadge.hidden = true;
+    if (!silent && was && labStage) drawLab(labStage);
+  }
+
+  function labPlayStep() {
+    labState.playTimer = null;
+    if (!labState.playing) return;
+
+    const st = calcStats(labState.points);
+    if (labState.playIndex >= st.n) {
+      labState.playing = false;
+      labState.hover = -1;
+      playBtn.textContent = '▶ 逐点累加';
+      if (labStage) drawLab(labStage);
+      playBadge.textContent = '完成 · Cov(X,Y) = ' + sf2(st.cov);
+      playBadge.hidden = false;
+      labState.playTimer = setTimeout(() => {
+        playBadge.hidden = true;
+        labState.playTimer = null;
+      }, 1600);
+      return;
+    }
+
+    const it = st.items[labState.playIndex];
+    labState.playSum += it.prod;
+    const count = labState.playIndex + 1;
+    labState.hover = labState.playIndex;
+    labState.playIndex++;
+    playBadge.textContent =
+      '逐点累加 ' + count + '/' + st.n + ' · 当前平均 ' + sf2(labState.playSum / count);
+    playBadge.hidden = false;
+    if (labStage) drawLab(labStage);
+    labState.playTimer = setTimeout(labPlayStep, 620);
+  }
+
+  function startLabPlay() {
+    labState.playing = true;
+    labState.playIndex = 0;
+    labState.playSum = 0;
+    playBtn.textContent = '■ 停止';
+    labPlayStep();
+  }
+
+  labState.points = makeLabPreset('positive');
+  buildContribRows();
+  const labStage = mountCanvas(labCanvas, labWrap, drawLab);
+
+  labCanvas.addEventListener('pointerdown', (e) => {
+    const pos = pointerPosOnLab(e);
+    const idx = pickLabPoint(pos.x, pos.y);
+    if (idx < 0) return;
+    if (labState.playing) stopLabPlay(true);
+    e.preventDefault();
+    labState.drag = idx;
+    labState.hover = idx;
+    labCanvas.classList.add('dragging');
+    labCanvas.style.cursor = 'grabbing';
+    try {
+      labCanvas.setPointerCapture(e.pointerId);
+    } catch (err) {
+      /* ignore */
+    }
+    drawLab(labStage);
+    showLabTip(idx);
+  });
+
+  labCanvas.addEventListener('pointermove', (e) => {
+    const pos = pointerPosOnLab(e);
+    if (labState.drag >= 0) {
+      const data = labDataFromPixels(pos.x, pos.y);
+      const p = labState.points[labState.drag];
+      p.x = data.x;
+      p.y = data.y;
+      drawLab(labStage);
+      showLabTip(labState.drag);
+      return;
+    }
+    const idx = pickLabPoint(pos.x, pos.y);
+    labCanvas.style.cursor = idx >= 0 ? 'grab' : 'default';
+    if (idx !== labState.hover) {
+      labState.hover = idx;
+      drawLab(labStage);
+      if (idx >= 0) showLabTip(idx);
+      else hideLabTip();
+    }
+  });
+
+  function endLabDrag(e) {
+    if (labState.drag < 0) return;
+    labState.drag = -1;
+    labCanvas.classList.remove('dragging');
+    labCanvas.style.cursor = 'grab';
+    if (e && labCanvas.hasPointerCapture && labCanvas.hasPointerCapture(e.pointerId)) {
+      labCanvas.releasePointerCapture(e.pointerId);
+    }
+    labState.hover = -1;
+    hideLabTip();
+    drawLab(labStage);
+  }
+
+  labCanvas.addEventListener('pointerup', endLabDrag);
+  labCanvas.addEventListener('pointercancel', endLabDrag);
+  labCanvas.addEventListener('pointerleave', () => {
+    if (labState.drag >= 0) return;
+    labState.hover = -1;
+    labCanvas.style.cursor = 'grab';
+    hideLabTip();
+    drawLab(labStage);
+  });
+
+  $$('.preset').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      stopLabPlay(true);
+      labState.preset = btn.dataset.preset;
+      labState.points = makeLabPreset(labState.preset);
+      labState.hover = -1;
+      labState.drag = -1;
+      $$('.preset').forEach((b) => b.classList.toggle('is-active', b === btn));
+      buildContribRows();
+      hideLabTip();
+      addPointBtn.disabled = labState.points.length >= 14;
+      drawLab(labStage);
+    });
+  });
+
+  $('#resetA').addEventListener('click', () => {
+    stopLabPlay(true);
+    labState.points = makeLabPreset(labState.preset);
+    labState.hover = -1;
+    labState.drag = -1;
+    labCanvas.classList.remove('dragging');
+    labCanvas.style.cursor = 'grab';
+    buildContribRows();
+    hideLabTip();
+    addPointBtn.disabled = labState.points.length >= 14;
+    drawLab(labStage);
+  });
+
+  addPointBtn.addEventListener('click', () => {
+    if (labState.points.length >= 14) return;
+    stopLabPlay(true);
+    const angle = Math.random() * TAU;
+    const radius = 0.9 + Math.random() * 2.5;
+    labState.points.push({
+      x: clamp(Math.cos(angle) * radius, -3.9, 3.9),
+      y: clamp(Math.sin(angle) * radius, -3.9, 3.9)
+    });
+    labState.hover = -1;
+    buildContribRows();
+    contribList.scrollTop = contribList.scrollHeight;
+    hideLabTip();
+    addPointBtn.disabled = labState.points.length >= 14;
+    drawLab(labStage);
+  });
+
+  rectToggle.addEventListener('change', () => {
+    labState.showRects = rectToggle.checked;
+    drawLab(labStage);
+  });
+
+  playBtn.addEventListener('click', () => {
+    if (labState.playing) {
+      stopLabPlay();
+    } else {
+      stopLabPlay(true);
+      startLabPlay();
+    }
+  });
+
+  /* ------------------------------------------------------------
+     03 · correlation lab
+  ------------------------------------------------------------ */
+  const rhoCanvas = $('#rhoCanvas');
+  const rhoWrap = $('#rhoWrap');
+  const rhoSlider = $('#rhoSlider');
+  const sigmaX = $('#sigmaX');
+  const sigmaY = $('#sigmaY');
+  const rhoVal = $('#rhoVal');
+  const sigmaXVal = $('#sigmaXVal');
+  const sigmaYVal = $('#sigmaYVal');
+  const rhoChip = $('#rhoChip');
+  const rhoCov = $('#rhoCov');
+  const rhoR = $('#rhoR');
+  const rhoIdentity = $('#rhoIdentity');
+  const mVarX = $('#mVarX');
+  const mCov1 = $('#mCov1');
+  const mCov2 = $('#mCov2');
+  const mVarY = $('#mVarY');
+
+  const rhoBase = orthogonalBases(260, 8675309);
+  const rhoState = {
+    rho: 0.85,
+    sx: 1.6,
+    sy: 1.2,
+    points: []
+  };
+
+  function paintRange(input) {
+    if (!input) return;
+    const min = Number(input.min);
+    const max = Number(input.max);
+    const val = Number(input.value);
+    const pct = ((val - min) / (max - min)) * 100;
+    input.style.setProperty('--p', pct + '%');
+  }
+
+  function buildRhoPoints() {
+    const k = Math.sqrt(Math.max(0, 1 - rhoState.rho * rhoState.rho));
+    rhoState.points = rhoBase.map(({ a, b }) => ({
+      x: rhoState.sx * a,
+      y: rhoState.sy * (rhoState.rho * a + k * b)
+    }));
+  }
+
+  function syncRhoUI() {
+    const st = calcStats(rhoState.points);
+    const covCls = signClass(st.cov, 0.005);
+    const rCls = signClass(st.r, 0.005);
+
+    rhoCov.textContent = sf2(st.cov);
+    rhoCov.className = covCls;
+    rhoR.textContent = sf2(st.r);
+    rhoR.className = rCls;
+
+    rhoChip.innerHTML =
+      '<span class="rho-caret" style="background:' +
+      (st.r > 0.005 ? C.teal : st.r < -0.005 ? C.coral : C.faint) +
+      '"></span>ρ = ' + sf2(rhoState.rho);
+
+    rhoVal.textContent = sf2(rhoState.rho);
+    sigmaXVal.textContent = f2(rhoState.sx);
+    sigmaYVal.textContent = f2(rhoState.sy);
+
+    rhoIdentity.textContent =
+      'Cov = ρ · σX · σY = ' + f2(rhoState.rho) + ' × ' + f2(rhoState.sx) + ' × ' +
+      f2(rhoState.sy) + ' ≈ ' + f2(st.cov);
+
+    mVarX.textContent = f2(st.vx);
+    mVarY.textContent = f2(st.vy);
+    mCov1.textContent = f2(st.cov);
+    mCov2.textContent = f2(st.cov);
+
+    paintRange(sigmaX);
+    paintRange(sigmaY);
+
+    $$('.mini-chip').forEach((btn) => {
+      btn.classList.toggle('active', Math.abs(Number(btn.dataset.rho) - rhoState.rho) < 0.001);
+    });
+  }
+
+  function drawRho(s) {
+    const ctx = s.ctx;
+    const w = s.w;
+    const h = s.h;
+    ctx.clearRect(0, 0, w, h);
+
+    const pad = { l: 34, r: 24, t: 28, b: 34 };
+    const plotW = Math.max(1, w - pad.l - pad.r);
+    const plotH = Math.max(1, h - pad.t - pad.b);
+    const domain = 7;
+    const X = (x) => pad.l + ((x + domain) / (domain * 2)) * plotW;
+    const Y = (y) => h - pad.b - ((y + domain) / (domain * 2)) * plotH;
+    const ox = X(0);
+    const oy = Y(0);
+
+    ctx.save();
+    clipPlot(ctx, pad.l, pad.t, plotW, plotH);
+
+    const rightW = Math.max(0, pad.l + plotW - ox);
+    const leftW = Math.max(0, ox - pad.l);
+    const topH = Math.max(0, oy - pad.t);
+    const botH = Math.max(0, pad.t + plotH - oy);
+    ctx.fillStyle = 'rgba(12,124,104,.028)';
+    if (rightW > 0 && topH > 0) ctx.fillRect(ox, pad.t, rightW, topH);
+    if (leftW > 0 && botH > 0) ctx.fillRect(pad.l, oy, leftW, botH);
+    ctx.fillStyle = 'rgba(201,90,60,.024)';
+    if (leftW > 0 && topH > 0) ctx.fillRect(pad.l, pad.t, leftW, topH);
+    if (rightW > 0 && botH > 0) ctx.fillRect(ox, oy, rightW, botH);
+
+    ctx.strokeStyle = 'rgba(23,33,29,.045)';
+    ctx.lineWidth = 1;
+    for (let v = -6; v <= 6; v += 2) {
+      const gx = Math.round(X(v)) + 0.5;
+      const gy = Math.round(Y(v)) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(gx, pad.t);
+      ctx.lineTo(gx, pad.t + plotH);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(pad.l, gy);
+      ctx.lineTo(pad.l + plotW, gy);
+      ctx.stroke();
+    }
+
+    // 2-sigma covariance ellipse.
+    const k = Math.sqrt(Math.max(0, 1 - rhoState.rho * rhoState.rho));
+    ctx.beginPath();
+    for (let i = 0; i <= 160; i++) {
+      const t = (i / 160) * TAU;
+      const ex = 2 * rhoState.sx * Math.cos(t);
+      const ey = 2 * rhoState.sy * (rhoState.rho * Math.cos(t) + k * Math.sin(t));
+      const px = X(ex);
+      const py = Y(ey);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(12,124,104,.028)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(23,33,29,.23)';
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([5, 6]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Points.
+    for (const p of rhoState.points) {
+      if (Math.abs(p.x) > domain || Math.abs(p.y) > domain) continue;
+      const product = p.x * p.y;
+      ctx.beginPath();
+      ctx.arc(X(p.x), Y(p.y), 2.35, 0, TAU);
+      ctx.fillStyle = product >= 0 ? 'rgba(12,124,104,.62)' : 'rgba(201,90,60,.58)';
+      ctx.fill();
+    }
+
+    // Mean axes.
+    ctx.setLineDash([5, 5]);
+    ctx.strokeStyle = 'rgba(23,33,29,.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(ox, pad.t);
+    ctx.lineTo(ox, pad.t + plotH);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(pad.l, oy);
+    ctx.lineTo(pad.l + plotW, oy);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.beginPath();
+    ctx.arc(ox, oy, 4, 0, TAU);
+    ctx.fillStyle = C.surface;
+    ctx.fill();
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    ctx.font = '500 10px ' + FONT_MONO;
+    ctx.fillStyle = C.muted;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText('EX', ox - 7, oy - 8);
+    ctx.textAlign = 'left';
+    ctx.fillText('EY', ox + 7, pad.t + 12);
+
+    ctx.restore();
+
+    ctx.font = '500 8.5px ' + FONT_MONO;
+    ctx.fillStyle = 'rgba(23,33,29,.33)';
+    ctx.textAlign = 'right';
+    ctx.fillText('X →', pad.l + plotW, h - 5);
+    ctx.textAlign = 'left';
+    ctx.fillText('Y ↑', 4, pad.t + 9);
+  }
+
+  buildRhoPoints();
+  const rhoStage = mountCanvas(rhoCanvas, rhoWrap, drawRho);
+
+  function updateRhoLab() {
+    rhoState.rho = Number(rhoSlider.value);
+    rhoState.sx = Number(sigmaX.value);
+    rhoState.sy = Number(sigmaY.value);
+    buildRhoPoints();
+    syncRhoUI();
+    drawRho(rhoStage);
+  }
+
+  rhoSlider.addEventListener('input', updateRhoLab);
+  sigmaX.addEventListener('input', updateRhoLab);
+  sigmaY.addEventListener('input', updateRhoLab);
+
+  $$('.mini-chip').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      rhoSlider.value = btn.dataset.rho;
+      updateRhoLab();
+    });
+  });
+
+  updateRhoLab();
+
+  /* ------------------------------------------------------------
+     U-shape counterexample
+  ------------------------------------------------------------ */
+  const uCanvas = $('#uCanvas');
+  const uCov = $('#uCov');
+  const uR = $('#uR');
+  const uState = {
+    seed: 1234,
+    points: [],
+    y0: 0
+  };
+
+  function makeUData(seed) {
+    const rng = mulberry32(seed);
+    const pts = [];
+    const half = 56;
+    for (let i = 0; i < half; i++) {
+      const x = 0.12 + (i / (half - 1)) * 2.05;
+      const baseY = 0.62 * x * x - 1.3;
+      pts.push({ x, y: baseY + (rng() - 0.5) * 0.24 });
+      pts.push({ x: -x, y: baseY + (rng() - 0.5) * 0.24 });
+    }
+    const y0 = meanOf(pts.map((p) => p.y));
+    for (const p of pts) p.y -= y0;
+    uState.y0 = y0;
+    return pts;
+  }
+
+  function drawU(s) {
+    const ctx = s.ctx;
+    const w = s.w;
+    const h = s.h;
+    ctx.clearRect(0, 0, w, h);
+
+    const st = calcStats(uState.points);
+    const pad = { l: 20, r: 14, t: 18, b: 18 };
+    const plotW = Math.max(1, w - pad.l - pad.r);
+    const plotH = Math.max(1, h - pad.t - pad.b);
+    const xHalf = 2.52;
+    const yHalf = 2.12;
+    const X = (x) => pad.l + ((x + xHalf) / (xHalf * 2)) * plotW;
+    const Y = (y) => h - pad.b - ((y + yHalf) / (yHalf * 2)) * plotH;
+    const ox = X(st.mx);
+    const oy = Y(st.my);
+
+    ctx.save();
+    clipPlot(ctx, pad.l, pad.t, plotW, plotH);
+
+    ctx.fillStyle = 'rgba(12,124,104,.03)';
+    ctx.fillRect(ox, pad.t, Math.max(0, pad.l + plotW - ox), Math.max(0, oy - pad.t));
+    ctx.fillRect(pad.l, oy, Math.max(0, ox - pad.l), Math.max(0, pad.t + plotH - oy));
+    ctx.fillStyle = 'rgba(201,90,60,.026)';
+    ctx.fillRect(pad.l, pad.t, Math.max(0, ox - pad.l), Math.max(0, oy - pad.t));
+    ctx.fillRect(ox, oy, Math.max(0, pad.l + plotW - ox), Math.max(0, pad.t + plotH - oy));
+
+    ctx.strokeStyle = 'rgba(23,33,29,.045)';
+    ctx.lineWidth = 1;
+    for (let v = -2; v <= 2; v++) {
+      const gx = Math.round(X(v)) + 0.5;
+      const gy = Math.round(Y(v)) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(gx, pad.t);
+      ctx.lineTo(gx, pad.t + plotH);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(pad.l, gy);
+      ctx.lineTo(pad.l + plotW, gy);
+      ctx.stroke();
+    }
+
+    // The true relationship, for reference.
+    ctx.beginPath();
+    for (let i = 0; i <= 120; i++) {
+      const x = -2.12 + (i / 120) * 4.24;
+      const y = 0.62 * x * x - 1.3 - uState.y0;
+      const px = X(x);
+      const py = Y(y);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.strokeStyle = 'rgba(23,33,29,.18)';
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([4, 5]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.setLineDash([4, 5]);
+    ctx.strokeStyle = 'rgba(23,33,29,.28)';
+    ctx.beginPath();
+    ctx.moveTo(ox, pad.t);
+    ctx.lineTo(ox, pad.t + plotH);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(pad.l, oy);
+    ctx.lineTo(pad.l + plotW, oy);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    for (const p of uState.points) {
+      if (Math.abs(p.x) > xHalf || Math.abs(p.y) > yHalf) continue;
+      const product = (p.x - st.mx) * (p.y - st.my);
+      ctx.beginPath();
+      ctx.arc(X(p.x), Y(p.y), 3.1, 0, TAU);
+      ctx.fillStyle = product >= 0 ? 'rgba(12,124,104,.62)' : 'rgba(201,90,60,.54)';
+      ctx.fill();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(255,253,247,.8)';
+      ctx.stroke();
+    }
+
+    ctx.beginPath();
+    ctx.arc(ox, oy, 3.5, 0, TAU);
+    ctx.fillStyle = C.surface;
+    ctx.fill();
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    ctx.restore();
+
+    ctx.font = '500 8.5px ' + FONT_MONO;
+    ctx.fillStyle = 'rgba(23,33,29,.32)';
+    ctx.textAlign = 'right';
+    ctx.fillText('X →', pad.l + plotW, h - 4);
+    ctx.textAlign = 'left';
+    ctx.fillText('Y ↑', 3, pad.t + 8);
+
+    uCov.textContent = sf2(st.cov);
+    uR.textContent = sf2(st.r);
+  }
+
+  uState.points = makeUData(uState.seed);
+  const uStage = mountCanvas(uCanvas, uCanvas.parentElement, drawU);
+
+  $('#uResample').addEventListener('click', () => {
+    uState.seed = (uState.seed * 1664525 + 1013904223) >>> 0;
+    uState.points = makeUData(uState.seed);
+    drawU(uStage);
+  });
+
+  /* ------------------------------------------------------------
+     hero
+  ------------------------------------------------------------ */
+  const heroCanvas = $('#heroCanvas');
+  const heroWrap = $('#heroWrap');
+  const heroR = $('#heroR');
+  const heroStatus = $('#heroStatus');
+  const heroDot = $('#heroDot');
+  const heroBase = orthogonalBases(140, 424242);
+  const reduceMotion =
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const heroState = {
+    rho: 0.82,
+    phase: 0,
+    lastLabelRho: null
+  };
+
+  function drawHero(s, rho) {
+    const ctx = s.ctx;
+    const w = s.w;
+    const h = s.h;
+    ctx.clearRect(0, 0, w, h);
+
+    const pad = 8;
+    const plotW = Math.max(1, w - pad * 2);
+    const plotH = Math.max(1, h - pad * 2);
+    const domain = 7.6;
+    const X = (x) => pad + ((x + domain) / (domain * 2)) * plotW;
+    const Y = (y) => h - pad - ((y + domain) / (domain * 2)) * plotH;
+    const ox = X(0);
+    const oy = Y(0);
+    const sigma = 2.35;
+    const k = Math.sqrt(Math.max(0, 1 - rho * rho));
+
+    ctx.save();
+    clipPlot(ctx, pad, pad, plotW, plotH);
+
+    ctx.fillStyle = 'rgba(94,223,195,.025)';
+    ctx.fillRect(ox, pad, Math.max(0, w - pad - ox), Math.max(0, oy - pad));
+    ctx.fillRect(pad, oy, Math.max(0, ox - pad), Math.max(0, h - pad - oy));
+    ctx.fillStyle = 'rgba(255,159,125,.026)';
+    ctx.fillRect(pad, pad, Math.max(0, ox - pad), Math.max(0, oy - pad));
+    ctx.fillRect(ox, oy, Math.max(0, w - pad - ox), Math.max(0, h - pad - oy));
+
+    ctx.strokeStyle = 'rgba(245,240,227,.055)';
+    ctx.lineWidth = 1;
+    for (let v = -6; v <= 6; v += 3) {
+      if (v === 0) continue;
+      const gx = Math.round(X(v)) + 0.5;
+      const gy = Math.round(Y(v)) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(gx, pad);
+      ctx.lineTo(gx, h - pad);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(pad, gy);
+      ctx.lineTo(w - pad, gy);
+      ctx.stroke();
+    }
+
+    // 1.5-sigma ellipse.
+    ctx.beginPath();
+    for (let i = 0; i <= 120; i++) {
+      const t = (i / 120) * TAU;
+      const ex = 1.5 * sigma * Math.cos(t);
+      const ey = 1.5 * sigma * (rho * Math.cos(t) + k * Math.sin(t));
+      const px = X(ex);
+      const py = Y(ey);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(245,240,227,.16)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 5]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    for (const p of heroBase) {
+      const x = sigma * p.a;
+      const y = sigma * (rho * p.a + k * p.b);
+      if (Math.abs(x) > domain || Math.abs(y) > domain) continue;
+      const product = x * y;
+      ctx.beginPath();
+      ctx.arc(X(x), Y(y), 1.95, 0, TAU);
+      ctx.fillStyle =
+        product >= 0 ? 'rgba(94,223,195,.82)' : 'rgba(255,159,125,.78)';
+      ctx.fill();
+    }
+
+    // Mean axes.
+    ctx.setLineDash([4, 5]);
+    ctx.strokeStyle = 'rgba(245,240,227,.16)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(ox, pad);
+    ctx.lineTo(ox, h - pad);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(pad, oy);
+    ctx.lineTo(w - pad, oy);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.beginPath();
+    ctx.arc(ox, oy, 3.2, 0, TAU);
+    ctx.fillStyle = 'rgba(21,35,31,.95)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(245,240,227,.6)';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    ctx.font = '500 8.5px ' + FONT_MONO;
+    ctx.fillStyle = 'rgba(245,240,227,.28)';
+    ctx.textAlign = 'left';
+    ctx.fillText('EX', ox + 6, oy - 6);
+    ctx.fillText('EY', ox + 6, pad + 13);
+
+    ctx.restore();
+
+    if (
+      heroState.lastLabelRho === null ||
+      Math.abs(rho - heroState.lastLabelRho) > 0.004
+    ) {
+      heroState.lastLabelRho = rho;
+      heroR.textContent = 'r = ' + sf2(rho);
+      if (rho > 0.16) {
+        heroStatus.textContent = '正相关：一起偏大、一起偏小';
+        heroDot.className = '';
+      } else if (rho < -0.16) {
+        heroStatus.textContent = '负相关：一个偏大、一个偏小';
+        heroDot.className = 'neg';
+      } else {
+        heroStatus.textContent = '几乎无关：点云接近圆形';
+        heroDot.className = 'zero';
+      }
+    }
+  }
+
+  const heroStage = mountCanvas(heroCanvas, heroWrap, (s) => drawHero(s, heroState.rho));
+  if (reduceMotion) {
+    const note = $('.hv-note');
+    if (note) note.textContent = '静态示意';
+  }
+
+  let heroVisible = true;
+  let heroRaf = null;
+  let heroLast = 0;
+
+  function heroTick(now) {
+    if (!heroVisible || document.hidden) {
+      heroRaf = null;
+      return;
+    }
+    if (!heroLast) heroLast = now;
+    const dt = Math.min((now - heroLast) / 1000, 0.06);
+    heroLast = now;
+    heroState.phase += dt * 0.5;
+    heroState.rho = 0.82 * Math.cos(heroState.phase);
+    drawHero(heroStage, heroState.rho);
+    heroRaf = requestAnimationFrame(heroTick);
+  }
+
+  function startHero() {
+    if (reduceMotion || heroRaf !== null || !heroVisible || document.hidden) return;
+    heroLast = 0;
+    heroRaf = requestAnimationFrame(heroTick);
+  }
+
+  function stopHero() {
+    if (heroRaf !== null) {
+      cancelAnimationFrame(heroRaf);
+      heroRaf = null;
+    }
+  }
+
+  if ('IntersectionObserver' in window) {
+    const heroObserver = new IntersectionObserver(
+      (entries) => {
+        heroVisible = entries[0].isIntersecting;
+        if (heroVisible) startHero();
+        else stopHero();
+      },
+      { threshold: 0 }
+    );
+    heroObserver.observe(heroWrap);
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopHero();
+    else startHero();
+  });
+  startHero();
+
+  /* ------------------------------------------------------------
+     quiz
+  ------------------------------------------------------------ */
+  const quizCards = $$('.quiz-card');
+  const quizScore = $('#quizScore');
+  const quizResult = $('#quizResult');
+  let quizAnswered = 0;
+  let quizCorrect = 0;
+
+  function refreshQuiz() {
+    quizScore.innerHTML = '<b>' + quizCorrect + '</b> / ' + quizCards.length;
+    if (quizAnswered < quizCards.length) return;
+
+    let title = '';
+    let detail = '';
+    if (quizCorrect === quizCards.length) {
+      title = '全部正确。';
+      detail = '你抓住了协方差的方向、量纲，以及“不相关 ≠ 独立”这几个关键点。';
+    } else if (quizCorrect >= 2) {
+      title = '大部分抓住了。';
+      detail = '回看答错那题的说明，再拖一拖上面的点，会更牢。';
+    } else {
+      title = '别急，协方差本来就容易混。';
+      detail = '记住四句话：同号为正、异号抵消、协方差有量纲、Cov=0 不等于独立。';
+    }
+    quizResult.innerHTML =
+      '<span class="result-mark">' + quizCorrect + ' / ' + quizCards.length +
+      '</span> <b>' + title + '</b> ' + detail;
+    quizResult.classList.add('show');
+  }
+
+  quizCards.forEach((card) => {
+    const answer = card.dataset.answer;
+    const opts = $$('.opt', card);
+    opts.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (card.dataset.done === '1') return;
+        card.dataset.done = '1';
+        card.classList.add('answered');
+
+        const correctBtn = card.querySelector('.opt[data-opt="' + answer + '"]');
+        if (correctBtn) correctBtn.classList.add('correct');
+        if (btn.dataset.opt === answer) quizCorrect++;
+        else btn.classList.add('wrong');
+
+        opts.forEach((b) => {
+          b.disabled = true;
+        });
+        const explain = card.querySelector('.explain');
+        if (explain) explain.classList.add('show');
+        quizAnswered++;
+        refreshQuiz();
+      });
+    });
+  });
+
+  refreshQuiz();
+
+  /* ------------------------------------------------------------
+     reveal, nav, scroll progress
+  ------------------------------------------------------------ */
+  const revealEls = $$('.reveal');
+  const heroReveals = $$('.hero .reveal');
+  heroReveals.forEach((el) => el.classList.add('in'));
+
+  if ('IntersectionObserver' in window && !reduceMotion) {
+    const revealObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('in');
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.08, rootMargin: '0px 0px -36px 0px' }
+    );
+    revealEls.forEach((el) => {
+      if (!el.classList.contains('in')) revealObserver.observe(el);
+    });
+  } else {
+    revealEls.forEach((el) => el.classList.add('in'));
+  }
+
+  const progress = $('#scrollProgress');
+  function updateProgress() {
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    const pct = max > 0 ? clamp(window.scrollY / max, 0, 1) * 100 : 0;
+    progress.style.width = pct + '%';
+  }
+  window.addEventListener('scroll', updateProgress, { passive: true });
+  window.addEventListener('resize', updateProgress);
+  updateProgress();
+
+  const navLinks = $$('.nav-links a');
+  if ('IntersectionObserver' in window) {
+    const byId = new Map();
+    navLinks.forEach((a) => byId.set(a.getAttribute('href').slice(1), a));
+    const navObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          navLinks.forEach((a) => a.classList.remove('active'));
+          const link = byId.get(entry.target.id);
+          if (link) link.classList.add('active');
+        });
+      },
+      { rootMargin: '-35% 0px -55% 0px', threshold: 0 }
+    );
+    byId.forEach((_, id) => {
+      const section = document.getElementById(id);
+      if (section) navObserver.observe(section);
+    });
+  }
+
+  /* Friendly error recovery for a canvas-free environment is unnecessary here,
+     but guarding against silent breakage helps when the page is embedded. */
+  window.addEventListener('error', (event) => {
+    if (event && event.message) {
+      // Keep the page usable; the visuals are the only non-essential part.
+      console.warn('CovLab:', event.message);
+    }
+  });
+})();
+</script>
+</body>
+</html>
