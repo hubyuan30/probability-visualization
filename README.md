@@ -7,6 +7,14 @@
 | [![协方差实验室](assets/covariance.jpg)](covariance/index.html) | [![二维正态分布 3D 实验室](assets/bivariate-normal.jpg)](bivariate-normal/index.html) |
 | 拖动散点，理解“两个变量是不是在一起波动”。 | 旋转 3D 曲面，观察联合概率密度与参数的关系。 |
 
+## 在线访问
+
+- 合集首页：<https://hubyuan30.github.io/probability-visualization/>
+- 协方差实验室：<https://hubyuan30.github.io/probability-visualization/covariance/>
+- 二维正态分布：<https://hubyuan30.github.io/probability-visualization/bivariate-normal/>
+
+也可以把仓库下载到本地，直接双击 `index.html`，所有页面都能离线运行。
+
 ## 两个实验
 
 ### 01 · 协方差实验室
