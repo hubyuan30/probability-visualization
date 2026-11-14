@@ -1,42 +1,88 @@
-# 协方差实验室
+# Probability Visualization · 概率论可视化
 
-一个纯前端、可交互的协方差可视化页面，用拖拽、散点和动态公式帮助理解：
+两个可以动手的交互式概率论网页。都是单文件 HTML，打开即用，不需要安装、服务器或联网。
 
-> 方差：独自波动。协方差：结伴波动。
+| 01 · 协方差实验室 | 02 · 二维正态分布 |
+| --- | --- |
+| [![协方差实验室](assets/covariance.jpg)](covariance/index.html) | [![二维正态分布 3D 实验室](assets/bivariate-normal.jpg)](bivariate-normal/index.html) |
+| 拖动散点，理解“两个变量是不是在一起波动”。 | 旋转 3D 曲面，观察联合概率密度与参数的关系。 |
 
-![页面预览](preview.png)
+## 两个实验
 
-## 内容
+### 01 · 协方差实验室
 
-- **先拆词**：从“co-（共同）+ variance（波动）”理解协方差的命名。
-- **拖点实验室**：拖动散点，实时观察协方差、相关系数，以及每个点对协方差的“投票”。
-- **相关旋钮**：调节 ρ、σX、σY，理解协方差与相关系数的区别。
-- **公式解剖**：拆解 `Cov(X,Y) = E[(X−EX)(Y−EY)]` 的四步含义。
-- **常见误区**：`Cov = 0` 不代表独立、数值大不代表关系强、相关不等于因果。
-- **自测**：四道选择题，即时反馈与解释。
+[进入页面](covariance/index.html)
 
-## 使用
+- 拖动散点，实时观察协方差、相关系数，以及每个点对协方差的“投票”
+- 正相关 / 负相关 / 几乎无关 / U 形陷阱四组预设
+- 逐点累加演示，理解 `Cov(X,Y) = E[(X−EX)(Y−EY)]`
+- ρ 与 σ 滑块，分清协方差和相关性的区别
+- 公式解剖、常见误区与四道随堂自测
 
-直接双击打开 `协方差可视化.html`，无需安装依赖，也没有外部 CDN 请求。页面适配桌面、平板和手机。
+### 02 · 二维正态分布 · 3D 交互实验室
 
-## 交互
+[进入页面](bivariate-normal/index.html)
 
-- 拖动散点改变数据，观察协方差和相关系数的变化。
-- 切换“正相关 / 负相关 / 几乎无关 / U 形陷阱”四组预设。
-- 开启“逐点累加”，看协方差如何由每个点的贡献平均而来。
-- 调节 ρ 和 σ 滑块，观察协方差跟着量纲变化，而相关系数保持稳定。
-- 完成四道自测题，检查是否真正理解。
+- 三维曲面高度表示联合概率密度 `f(x,y)`，颜色由低到高采用 plasma 色带
+- 鼠标拖拽旋转、滚轮缩放、右键平移，支持自动旋转
+- `μ₁, μ₂, σ₁, σ₂, ρ` 五个参数实时调节
+- 曲面上显示等密度椭圆，右侧实时显示峰值密度与协方差
+- 标准正态、强正相关、强负相关、狭长山脊四组预设
 
-## 计算说明
+## 打开方式
 
-页面使用总体形式 `1/n` 计算协方差，便于与 `E[·]` 对应。样本协方差通常使用 `1/(n−1)`，但它不改变符号和直观含义。
+直接双击根目录的 `index.html` 进入合集首页，再选择任意实验；也可以直接双击：
 
-## 参考
+- `covariance/index.html`
+- `bivariate-normal/index.html`
 
-- [Wikipedia · 协方差](https://zh.wikipedia.org/wiki/%E5%8D%8F%E6%96%B9%E5%B7%AE)
-- [Khan Academy · Covariance and correlation](https://www.khanacademy.org/math/statistics-probability/describing-relationships-quantitative-data/more-on-correlation/a/covariance-and-correlation)
-- [Cross Validated · 零协方差与独立](https://math.stackexchange.com/questions/4194711/confused-about-zero-covariance-and-independence)
+所有页面均无外部 CDN 请求。二维正态页面已把 Three.js 内联进 HTML，离线也能正常渲染。
 
-## 技术
+## 目录结构
 
-单文件 HTML + CSS + JavaScript，使用 Canvas 绘制图形，无框架、无构建步骤。
+```text
+.
+├─ index.html                  # 合集入口页
+├─ assets/                     # 入口页配图
+├─ covariance/
+│  ├─ index.html               # 协方差实验室（成品）
+│  ├─ src/                     # shell.html + style.css + app.js
+│  ├─ build.mjs                # 内联构建脚本
+│  ├─ package.json
+│  └─ README.md
+└─ bivariate-normal/
+   ├─ index.html               # 二维正态分布（成品）
+   ├─ src/                     # 页面模板 + Three.js 场景源码
+   ├─ preview/                 # 桌面 / 笔记本 / 手机 / 参数偏移截图
+   ├─ build.mjs                # 把打包 JS 内联回 HTML
+   ├─ package.json
+   └─ README.md
+```
+
+## 本地修改与构建
+
+协方差页面不需要安装依赖：
+
+```powershell
+cd covariance
+npm run build
+```
+
+二维正态页面需要先安装 `three` 与 `esbuild`：
+
+```powershell
+cd bivariate-normal
+npm install
+npm run build
+```
+
+两个构建脚本都会重新生成各自目录下的 `index.html`。
+
+## 计算与读图说明
+
+- **协方差**：页面使用总体形式 `1/n`，便于与 `E[·]` 对应；样本协方差通常使用 `1/(n−1)`，但不改变符号与直观含义。
+- **二维正态曲面**：为了让不同参数下的曲面都保持可观察的高度，峰高采用自动归一化，但 z 轴刻度会同步显示真实的概率密度数值。
+
+## 第三方许可
+
+二维正态页面的 3D 渲染基于 [three.js](https://threejs.org/)，遵循 MIT License，Copyright © 2010-2025 three.js authors。其余代码以 MIT License 发布，详见 [LICENSE](LICENSE)。

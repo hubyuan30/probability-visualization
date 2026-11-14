@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#05070d">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<title>二维正态分布 · 3D 交互实验室</title>
+<style>
+  :root{
+    --bg:#05070d;
+    --text:#eef3ff;
+    --muted:#91a0ba;
+    --micro:#64728c;
+    --teal:#6ee7d3;
+    --amber:#f9c270;
+    --pink:#f49ac1;
+    --violet:#b197ff;
+    --stroke:rgba(158,183,224,.13);
+    --stroke-soft:rgba(158,183,224,.08);
+    --panel:rgba(9,14,27,.78);
+    --glass:rgba(8,13,26,.58);
+    --sans:"Segoe UI Variable Text","Segoe UI",-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei UI","Microsoft YaHei",sans-serif;
+    --math:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,"Times New Roman",serif;
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+    overflow:hidden;
+  }
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    z-index:0;
+    background:
+      radial-gradient(1000px 640px at 12% -8%, rgba(94,62,168,.22), transparent 62%),
+      radial-gradient(900px 620px at 96% 10%, rgba(23,127,148,.16), transparent 62%),
+      radial-gradient(900px 720px at 54% 112%, rgba(210,116,48,.10), transparent 66%),
+      linear-gradient(160deg,#060810 0%,#04060c 60%,#05070d 100%);
+  }
+  body::after{
+    content:"";
+    position:fixed;
+    inset:0;
+    z-index:0;
+    pointer-events:none;
+    background-image:
+      linear-gradient(rgba(133,164,220,.032) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(133,164,220,.032) 1px,transparent 1px);
+    background-size:54px 54px;
+    -webkit-mask-image:radial-gradient(ellipse 90% 80% at 50% 42%,#000 0%,transparent 82%);
+            mask-image:radial-gradient(ellipse 90% 80% at 50% 42%,#000 0%,transparent 82%);
+  }
+  button,input{font:inherit;color:inherit}
+  button{cursor:pointer}
+  button:focus-visible,input:focus-visible{outline:none}
+  ::selection{background:rgba(110,231,211,.24)}
+
+  .app{
+    position:relative;
+    z-index:1;
+    height:100vh;
+    padding:16px 20px 18px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+
+  /* ================= header ================= */
+  .topbar{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:18px;
+    padding:0 4px;
+    min-height:48px;
+  }
+  .brand{display:flex;align-items:center;gap:13px;min-width:0}
+  .back-lab{
+    margin-left:auto;
+    display:inline-flex;align-items:center;gap:5px;white-space:nowrap;
+    text-decoration:none;font-size:10.5px;letter-spacing:.06em;
+    color:var(--muted);padding:7px 11px;border-radius:999px;
+    border:1px solid var(--stroke);background:rgba(9,14,27,.55);
+    transition:color .18s,border-color .18s,background .18s;
+  }
+  .back-lab:hover{color:var(--text);border-color:rgba(110,231,211,.35);background:rgba(110,231,211,.06)}
+  .brand-mark{
+    width:43px;height:43px;
+    flex:0 0 auto;
+    display:grid;place-items:center;
+    border-radius:14px;
+    border:1px solid rgba(177,151,255,.24);
+    background:
+      radial-gradient(circle at 30% 22%,rgba(249,194,112,.20),transparent 58%),
+      linear-gradient(145deg,rgba(20,28,51,.96),rgba(8,12,24,.92));
+    box-shadow:0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .brand-mark svg{width:29px;height:29px;overflow:visible}
+  .brand-copy{min-width:0}
+  .eyebrow{
+    display:flex;align-items:center;gap:8px;
+    font-size:9px;letter-spacing:.19em;color:var(--micro);
+    text-transform:uppercase;white-space:nowrap;
+  }
+  .eyebrow .dot{width:3px;height:3px;border-radius:50%;background:var(--micro);opacity:.7}
+  h1{
+    margin:3px 0 0;
+    font-size:23px;
+    line-height:1.1;
+    letter-spacing:-.02em;
+    font-weight:600;
+    display:flex;align-items:baseline;gap:10px;
+    white-space:nowrap;
+  }
+  h1 span{
+    font-size:9.5px;
+    letter-spacing:.18em;
+    color:var(--micro);
+    font-weight:400;
+    text-transform:uppercase;
+  }
+  .top-meta{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+  .meta-chip{
+    display:flex;align-items:center;gap:8px;
+    padding:8px 11px;
+    border:1px solid var(--stroke-soft);
+    border-radius:10px;
+    background:rgba(11,17,32,.52);
+    color:var(--muted);
+    font-size:10px;
+    letter-spacing:.03em;
+    white-space:nowrap;
+  }
+  .meta-chip.symbol{font-family:var(--math);font-size:12px;font-style:italic;color:#c7d3ea;letter-spacing:.02em}
+  .pulse{
+    width:6px;height:6px;border-radius:50%;
+    background:var(--teal);
+    box-shadow:0 0 0 4px rgba(110,231,211,.08),0 0 12px rgba(110,231,211,.7);
+    animation:pulse 2.6s ease-in-out infinite;
+  }
+
+  /* ================= layout ================= */
+  .layout{
+    flex:1 1 auto;
+    min-height:0;
+    display:grid;
+    grid-template-columns:344px minmax(0,1fr);
+    gap:16px;
+  }
+
+  /* ================= control panel ================= */
+  .panel{
+    min-height:0;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    padding:19px 18px 15px;
+    border:1px solid var(--stroke);
+    border-radius:22px;
+    background:
+      radial-gradient(420px 240px at 8% 0%,rgba(94,62,168,.13),transparent 70%),
+      linear-gradient(158deg,rgba(15,22,40,.90),rgba(7,11,22,.84));
+    box-shadow:0 30px 70px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.035);
+    scrollbar-width:thin;
+    scrollbar-color:rgba(126,148,190,.35) transparent;
+  }
+  .panel::-webkit-scrollbar{width:5px}
+  .panel::-webkit-scrollbar-thumb{background:rgba(126,148,190,.28);border-radius:99px}
+  .panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+  .panel-kicker{font-size:8.5px;letter-spacing:.2em;color:var(--micro)}
+  .panel-head h2{margin:3px 0 0;font-size:19px;font-weight:600;letter-spacing:-.01em}
+  .icon-btn{
+    display:inline-flex;align-items:center;gap:5px;
+    padding:6px 9px;
+    margin-top:2px;
+    border:1px solid var(--stroke);
+    border-radius:9px;
+    background:rgba(255,255,255,.025);
+    color:var(--muted);
+    font-size:10px;
+    transition:border-color .2s,color .2s,background .2s,transform .2s;
+  }
+  .icon-btn svg{width:12px;height:12px;flex:0 0 auto}
+  .icon-btn:hover{color:var(--text);border-color:rgba(110,231,211,.32);background:rgba(110,231,211,.06)}
+  .icon-btn:active{transform:scale(.97)}
+  .panel-intro{
+    margin:11px 0 4px;
+    font-size:11px;
+    line-height:1.62;
+    color:var(--muted);
+  }
+  .param-group{margin-top:11px}
+  .group-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding-bottom:3px;
+    border-bottom:1px solid rgba(158,183,224,.07);
+    font-size:9.5px;
+    letter-spacing:.12em;
+    color:var(--micro);
+    text-transform:uppercase;
+  }
+  .group-head span:last-child{font-size:7.5px;letter-spacing:.22em;opacity:.62}
+  .param-row{padding-top:9px}
+  .param-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .param-label{display:flex;align-items:baseline;gap:7px;min-width:0}
+  .param-symbol{
+    font-family:var(--math);
+    font-size:17px;
+    font-style:italic;
+    line-height:1;
+    color:#e8efff;
+    white-space:nowrap;
+  }
+  .param-symbol sub{font-size:9px;font-style:normal;color:var(--micro)}
+  .param-name{
+    font-size:10px;color:var(--micro);white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;
+  }
+  .param-value{
+    min-width:55px;
+    padding:2.5px 7px;
+    border:1px solid rgba(255,255,255,.065);
+    border-radius:7px;
+    background:rgba(255,255,255,.035);
+    color:#e9f0ff;
+    font-size:11px;
+    font-variant-numeric:tabular-nums;
+    text-align:center;
+    white-space:nowrap;
+  }
+  .range-wrap{position:relative;height:19px;margin-top:7px;display:flex;align-items:center}
+  .range-track{
+    position:absolute;left:0;right:0;top:50%;height:4px;
+    transform:translateY(-50%);
+    border-radius:99px;
+    background:rgba(132,156,196,.16);
+    box-shadow:inset 0 1px 2px rgba(0,0,0,.35);
+    overflow:hidden;
+  }
+  .range-fill{
+    position:absolute;top:0;bottom:0;left:0;width:0%;
+    border-radius:99px;
+    background:linear-gradient(90deg,color-mix(in srgb,var(--pc) 68%,#2b3654),var(--pc));
+    box-shadow:0 0 14px color-mix(in srgb,var(--pc) 50%,transparent);
+    transition:width .06s linear,left .06s linear;
+  }
+  .range-center{
+    display:none;
+    position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;
+    transform:translateX(-50%);
+    background:rgba(209,224,255,.28);
+    z-index:1;
+  }
+  .range-wrap.bipolar .range-center{display:block}
+  input[type="range"]{
+    position:absolute;inset:0;
+    width:100%;height:100%;
+    margin:0;
+    -webkit-appearance:none;
+    appearance:none;
+    background:transparent;
+    z-index:2;
+    cursor:pointer;
+  }
+  input[type="range"]::-webkit-slider-runnable-track{height:4px;background:transparent;border:none}
+  input[type="range"]::-moz-range-track{height:4px;background:transparent;border:none}
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:14px;height:14px;
+    margin-top:-5px;
+    border-radius:50%;
+    border:2px solid #070d1b;
+    background:#f7fbff;
+    box-shadow:0 0 0 1px rgba(255,255,255,.22),0 2px 8px rgba(0,0,0,.5),0 0 13px color-mix(in srgb,var(--pc) 55%,transparent);
+    transition:transform .16s ease,box-shadow .16s ease;
+  }
+  input[type="range"]::-moz-range-thumb{
+    width:12px;height:12px;
+    border-radius:50%;
+    border:2px solid #070d1b;
+    background:#f7fbff;
+    box-shadow:0 0 0 1px rgba(255,255,255,.22),0 2px 8px rgba(0,0,0,.5),0 0 13px color-mix(in srgb,var(--pc) 55%,transparent);
+  }
+  input[type="range"]:hover::-webkit-slider-thumb,
+  input[type="range"]:focus-visible::-webkit-slider-thumb{transform:scale(1.18)}
+  input[type="range"]:focus-visible + .range-track,
+  .range-wrap:focus-within .range-track{box-shadow:0 0 0 3px rgba(110,231,211,.10),inset 0 1px 2px rgba(0,0,0,.35)}
+
+  .preset-block{margin-top:12px}
+  .preset-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}
+  .preset-btn{
+    display:flex;align-items:center;gap:7px;
+    padding:7px 9px;
+    border:1px solid rgba(158,183,224,.10);
+    border-radius:9px;
+    background:rgba(255,255,255,.022);
+    color:var(--muted);
+    font-size:10.5px;
+    text-align:left;
+    transition:border-color .2s,color .2s,background .2s,transform .15s;
+  }
+  .preset-btn::before{
+    content:"";width:5px;height:5px;border-radius:50%;
+    background:var(--pc,var(--teal));
+    box-shadow:0 0 7px color-mix(in srgb,var(--pc,var(--teal)) 60%,transparent);
+    flex:0 0 auto;opacity:.7;
+  }
+  .preset-btn:hover{color:var(--text);border-color:rgba(158,183,224,.22);background:rgba(255,255,255,.04)}
+  .preset-btn:active{transform:scale(.985)}
+  .preset-btn.active{
+    color:#f0f6ff;
+    border-color:rgba(110,231,211,.30);
+    background:rgba(110,231,211,.065);
+  }
+  .preset-btn.active::before{background:var(--teal);opacity:1}
+
+  .switch-list{display:grid;gap:6px;margin-top:12px}
+  .switch-row{
+    display:flex;align-items:center;gap:9px;
+    padding:8px 10px;
+    border:1px solid rgba(158,183,224,.09);
+    border-radius:10px;
+    background:rgba(255,255,255,.018);
+    cursor:pointer;
+    transition:border-color .2s,background .2s;
+  }
+  .switch-row:hover{border-color:rgba(158,183,224,.20);background:rgba(255,255,255,.033)}
+  .switch-copy{flex:1;min-width:0}
+  .switch-copy b{display:block;font-size:11px;font-weight:500;color:#dfe8f8;line-height:1.2}
+  .switch-copy small{display:block;margin-top:2px;font-size:9px;color:var(--micro);line-height:1.3}
+  .switch-row input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+  .switch-ui{
+    position:relative;flex:0 0 auto;
+    width:32px;height:18px;
+    border-radius:99px;
+    background:rgba(123,145,184,.18);
+    border:1px solid rgba(158,183,224,.12);
+    transition:background .22s,border-color .22s;
+  }
+  .switch-ui::after{
+    content:"";
+    position:absolute;left:2px;top:2px;
+    width:12px;height:12px;
+    border-radius:50%;
+    background:#8b99b3;
+    box-shadow:0 1px 3px rgba(0,0,0,.45);
+    transition:transform .22s ease,background .22s;
+  }
+  .switch-row input:checked + .switch-ui{background:rgba(110,231,211,.22);border-color:rgba(110,231,211,.34)}
+  .switch-row input:checked + .switch-ui::after{transform:translateX(14px);background:var(--teal);box-shadow:0 0 10px rgba(110,231,211,.55)}
+  .switch-row input:focus-visible + .switch-ui{box-shadow:0 0 0 3px rgba(110,231,211,.14)}
+
+  .insight-card{
+    margin-top:12px;
+    padding:10px 11px;
+    border:1px solid rgba(158,183,224,.085);
+    border-radius:11px;
+    background:
+      radial-gradient(220px 120px at 100% 0%,rgba(94,62,168,.10),transparent 72%),
+      rgba(255,255,255,.016);
+  }
+  .insight-head{
+    display:flex;align-items:center;justify-content:space-between;
+    color:var(--micro);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;
+  }
+  .insight-head span:last-child{font-size:7.5px;letter-spacing:.2em;opacity:.65}
+  .insight-list{
+    list-style:none;margin:8px 0 0;padding:0;
+    display:grid;gap:6px;
+    color:#9eafc9;font-size:10px;line-height:1.45;
+  }
+  .insight-list li{display:flex;align-items:center;gap:7px;min-width:0}
+  .insight-list i{
+    width:4px;height:4px;border-radius:50%;flex:0 0 auto;
+    background:var(--dot,var(--teal));
+    box-shadow:0 0 7px color-mix(in srgb,var(--dot,var(--teal)) 65%,transparent);
+  }
+  .insight-list b{
+    font-family:var(--math);font-weight:400;font-style:italic;color:#dce7f7;
+    font-size:10.5px;
+  }
+  .insight-note{
+    margin-top:8px;padding-top:8px;
+    border-top:1px solid rgba(158,183,224,.075);
+    font-size:9px;line-height:1.65;color:#7c8da9;
+  }
+  .insight-note b{font-family:var(--math);font-style:italic;font-weight:400;color:#b8c8df}
+
+  .panel-foot{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    margin-top:13px;padding-top:10px;
+    border-top:1px solid rgba(158,183,224,.08);
+    color:var(--micro);
+    font-size:8.5px;
+    letter-spacing:.03em;
+  }
+  .panel-foot .foot-badge{
+    padding:3px 6px;border:1px solid rgba(158,183,224,.12);border-radius:5px;
+    font-size:8px;letter-spacing:.1em;color:#8ea0bf;
+  }
+
+  /* ================= stage ================= */
+  .stage{min-width:0;min-height:0;display:flex;flex-direction:column;gap:9px}
+  .stage-bar{
+    flex:0 0 auto;
+    min-height:38px;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:0 3px;
+  }
+  .stage-title{display:flex;align-items:center;gap:9px;min-width:0}
+  .stage-title h2{margin:0;font-size:13px;font-weight:500;letter-spacing:.01em;color:#dce6f8;white-space:nowrap}
+  .live-dot{
+    width:6px;height:6px;border-radius:50%;
+    background:var(--teal);
+    box-shadow:0 0 0 4px rgba(110,231,211,.07),0 0 11px rgba(110,231,211,.65);
+    animation:pulse 2.6s ease-in-out infinite;
+  }
+  .chip{
+    padding:2px 6px;
+    border:1px solid rgba(158,183,224,.13);
+    border-radius:5px;
+    color:var(--micro);
+    font-size:7.5px;
+    letter-spacing:.15em;
+  }
+  .stage-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+  .auto-indicator{
+    display:flex;align-items:center;gap:6px;
+    color:var(--muted);
+    font-size:9.5px;
+    letter-spacing:.03em;
+    padding:5px 8px;
+    border:1px solid var(--stroke-soft);
+    border-radius:7px;
+    background:rgba(8,13,26,.38);
+    transition:opacity .2s;
+  }
+  .auto-indicator .auto-dot{
+    width:5px;height:5px;border-radius:50%;
+    background:var(--teal);
+    box-shadow:0 0 8px rgba(110,231,211,.75);
+    transition:background .2s,box-shadow .2s;
+  }
+  .auto-indicator.is-paused .auto-dot{background:var(--amber);box-shadow:0 0 8px rgba(249,194,112,.65)}
+  .auto-indicator.is-off{opacity:.45}
+  .auto-indicator.is-off .auto-dot{background:var(--micro);box-shadow:none}
+  .ghost-btn{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:6px 9px;
+    border:1px solid var(--stroke);
+    border-radius:8px;
+    background:rgba(255,255,255,.025);
+    color:var(--muted);
+    font-size:10px;
+    transition:color .2s,border-color .2s,background .2s,transform .15s;
+  }
+  .ghost-btn svg{width:12px;height:12px}
+  .ghost-btn:hover{color:var(--text);border-color:rgba(110,231,211,.30);background:rgba(110,231,211,.055)}
+  .ghost-btn:active{transform:scale(.97)}
+
+  .viewport{
+    position:relative;
+    flex:1 1 auto;
+    min-height:0;
+    overflow:hidden;
+    border:1px solid var(--stroke);
+    border-radius:23px;
+    background:
+      radial-gradient(760px 430px at 52% 27%,rgba(51,67,123,.42),transparent 66%),
+      radial-gradient(620px 380px at 16% 88%,rgba(75,35,103,.20),transparent 70%),
+      linear-gradient(180deg,#080d1a 0%,#050810 58%,#04060c 100%);
+    box-shadow:0 32px 80px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.035);
+    isolation:isolate;
+  }
+  .viewport::before{
+    content:"";
+    position:absolute;inset:0;z-index:0;pointer-events:none;
+    background:radial-gradient(ellipse at 50% 42%,transparent 38%,rgba(2,4,9,.34) 100%);
+  }
+  .viewport::after{
+    content:"";
+    position:absolute;left:10%;right:10%;bottom:0;height:1px;z-index:0;
+    background:linear-gradient(90deg,transparent,rgba(110,231,211,.24),transparent);
+    opacity:.45;
+  }
+  .viewport canvas{
+    position:absolute;
+    inset:0;
+    z-index:1;
+    display:block;
+    width:100%!important;
+    height:100%!important;
+    touch-action:none;
+  }
+  .viewport.is-error .fatal{display:flex}
+  .fatal{
+    display:none;
+    position:absolute;inset:0;z-index:20;
+    align-items:center;justify-content:center;
+    padding:24px;
+    text-align:center;
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.7;
+    background:rgba(5,8,16,.85);
+  }
+
+  .formula-card,
+  .readout-card,
+  .legend-card,
+  .hint-card{
+    position:absolute;
+    z-index:5;
+    border:1px solid rgba(158,183,224,.12);
+    background:
+      linear-gradient(150deg,rgba(12,19,36,.76),rgba(6,10,20,.66));
+    box-shadow:0 16px 40px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.035);
+    -webkit-backdrop-filter:blur(16px) saturate(120%);
+            backdrop-filter:blur(16px) saturate(120%);
+  }
+
+  .formula-card{
+    top:16px;left:16px;
+    width:min(430px, calc(100% - 270px));
+    padding:12px 15px 11px;
+    border-radius:14px;
+    pointer-events:none;
+  }
+  .formula-top{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;
+    color:var(--micro);
+    font-size:7.5px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+  }
+  .formula-def{letter-spacing:.06em;color:#8494b0;text-transform:none;font-size:8.5px;white-space:nowrap}
+  .formula-main{
+    margin-top:7px;
+    font-family:var(--math);
+    font-size:16px;
+    line-height:1.15;
+    color:#eff5ff;
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:3px;
+  }
+  .formula-main .math-i{font-style:italic}
+  .formula-main sup{
+    font-size:9.5px;
+    line-height:1;
+    align-self:flex-start;
+    margin-top:3px;
+    color:#c8d6ee;
+    white-space:nowrap;
+  }
+  .frac{
+    display:inline-flex;flex-direction:column;align-items:center;justify-content:center;
+    margin:0 3px;
+    font-size:10.5px;
+    line-height:1.06;
+    vertical-align:middle;
+    color:#dfe9fb;
+  }
+  .frac > span:first-child{
+    padding:0 7px 2px;
+    border-bottom:1px solid rgba(203,220,247,.50);
+  }
+  .frac > span:last-child{padding:2px 7px 0;font-size:9.5px;color:#b9c8e2}
+  .formula-q{
+    margin-top:7px;
+    font-family:var(--math);
+    font-size:10.5px;
+    line-height:1.55;
+    color:#8fa0bd;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .formula-q b{color:#b8c7e0;font-weight:400}
+
+  .readout-card{
+    top:16px;right:16px;
+    width:196px;
+    padding:12px 14px 13px;
+    border-radius:14px;
+    pointer-events:none;
+  }
+  .card-label{font-size:7.5px;letter-spacing:.18em;color:var(--micro);text-transform:uppercase}
+  .peak-row{display:flex;align-items:baseline;gap:5px;margin-top:5px}
+  .peak-number{
+    font-size:29px;
+    line-height:1;
+    font-weight:600;
+    letter-spacing:-.045em;
+    color:#f7faff;
+    font-variant-numeric:tabular-nums;
+  }
+  .peak-unit{font-size:8px;color:var(--micro);white-space:nowrap;letter-spacing:.01em}
+  .peak-formula{margin-top:4px;font-family:var(--math);font-size:10.5px;font-style:italic;color:#8d9fbb}
+  .hairline{height:1px;margin:10px 0 9px;background:linear-gradient(90deg,rgba(158,183,224,.20),transparent)}
+  .rho-status{display:flex;align-items:center;gap:7px;font-size:10.5px;color:#d6e2f6;white-space:nowrap}
+  .rho-dot{
+    width:5px;height:5px;border-radius:50%;flex:0 0 auto;
+    background:var(--teal);
+    box-shadow:0 0 8px currentColor;
+    color:var(--teal);
+    transition:background .3s,color .3s;
+  }
+  .rho-value{margin-left:auto;font-size:9px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .cov-row{margin-top:7px;font-size:8.5px;color:var(--micro);letter-spacing:.03em;font-variant-numeric:tabular-nums}
+  .cov-row span{color:#aab9d1}
+
+  .legend-card{
+    left:16px;bottom:16px;
+    width:184px;
+    padding:10px 12px 9px;
+    border-radius:12px;
+    pointer-events:none;
+  }
+  .legend-head{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:8.5px;color:var(--muted);letter-spacing:.02em}
+  .legend-head span:last-child{font-size:7.5px;color:var(--micro);letter-spacing:.05em}
+  .legend-bar{
+    height:5px;margin:8px 0 4px;
+    border-radius:99px;
+    background:linear-gradient(90deg,#0a0519 0%,#260954 16%,#5e137e 34%,#9b2377 52%,#d2435d 68%,#f37b41 84%,#f9b53d 94%,#fff0a0 100%);
+    box-shadow:0 0 14px rgba(218,71,95,.14);
+  }
+  .legend-labels{display:flex;justify-content:space-between;color:var(--micro);font-size:7.5px}
+
+  .hint-card{
+    right:16px;bottom:16px;
+    display:flex;align-items:center;gap:8px;
+    padding:8px 11px;
+    border-radius:10px;
+    color:var(--muted);
+    font-size:8.5px;
+    letter-spacing:.02em;
+    white-space:nowrap;
+    pointer-events:none;
+  }
+  .hint-card svg{width:12px;height:12px;opacity:.8;flex:0 0 auto}
+  .hint-sep{width:1px;height:10px;background:rgba(158,183,224,.15)}
+  .viewport-fade{
+    position:absolute;left:0;right:0;bottom:0;height:92px;z-index:3;pointer-events:none;
+    background:linear-gradient(180deg,transparent,rgba(3,5,11,.34));
+  }
+
+  @keyframes pulse{
+    0%,100%{opacity:.65;transform:scale(.92)}
+    50%{opacity:1;transform:scale(1.06)}
+  }
+  @keyframes reveal{
+    from{opacity:0;transform:translateY(9px)}
+    to{opacity:1;transform:translateY(0)}
+  }
+  .topbar{animation:reveal .55s cubic-bezier(.2,.75,.3,1) both}
+  .panel{animation:reveal .65s .04s cubic-bezier(.2,.75,.3,1) both}
+  .stage{animation:reveal .65s .09s cubic-bezier(.2,.75,.3,1) both}
+
+  /* ================= responsive ================= */
+  @media (max-width:1250px){
+    .layout{grid-template-columns:320px minmax(0,1fr)}
+    .top-meta .meta-chip.symbol{display:none}
+    .formula-card{width:min(392px, calc(100% - 250px))}
+  }
+  @media (max-width:1040px){
+    body{overflow:auto}
+    .app{height:auto;min-height:100vh;padding:14px 14px 18px}
+    .layout{grid-template-columns:1fr;min-height:0}
+    .stage{order:1;height:min(72vh,720px);min-height:480px}
+    .panel{order:2;overflow:visible}
+    .formula-card{width:min(410px,calc(100% - 238px))}
+  }
+  @media (min-width:1041px) and (max-height:820px){
+    .panel-intro{display:none}
+    .param-group{margin-top:8px}
+    .param-row{padding-top:7px}
+    .preset-block{margin-top:9px}
+    .switch-list{margin-top:9px}
+    .insight-card{display:none}
+    .panel-foot{margin-top:9px;padding-top:8px}
+  }
+  @media (max-width:720px){
+    .app{padding:12px 10px 16px;gap:11px}
+    .top-meta{display:none}
+    h1{font-size:21px}
+    h1 span{display:none}
+    .stage{height:66vh;min-height:420px}
+    .stage-bar{min-height:34px}
+    .stage-actions .auto-indicator{display:none}
+    .formula-card{display:none}
+    .readout-card{width:168px;padding:10px 12px;top:12px;right:12px}
+    .peak-number{font-size:24px}
+    .legend-card{left:12px;bottom:12px;width:162px}
+    .hint-card{display:none}
+    .formula-card,.readout-card{border-radius:12px}
+    .panel{padding:17px 15px 14px}
+  }
+  @media (max-width:430px){
+    .stage{height:60vh;min-height:360px}
+    .readout-card{width:150px}
+    .legend-card{width:146px}
+    .stage-title h2{font-size:12px}
+    .chip{display:none}
+    .ghost-btn span{display:none}
+    .ghost-btn{padding:6px 7px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none">
+          <defs>
+            <linearGradient id="logoGrad" x1="4" y1="26" x2="28" y2="5" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#6ee7d3"/>
+              <stop offset=".58" stop-color="#b197ff"/>
+              <stop offset="1" stop-color="#f9c270"/>
+            </linearGradient>
+          </defs>
+          <ellipse cx="16" cy="17" rx="12.2" ry="5.7" transform="rotate(-33 16 17)" stroke="url(#logoGrad)" stroke-width="1.05" opacity=".95"/>
+          <ellipse cx="16" cy="17" rx="8.4" ry="3.9" transform="rotate(-33 16 17)" stroke="url(#logoGrad)" stroke-width="1.05" opacity=".7"/>
+          <ellipse cx="16" cy="17" rx="4.6" ry="2.15" transform="rotate(-33 16 17)" stroke="url(#logoGrad)" stroke-width="1.05" opacity=".5"/>
+          <path d="M5.5 25.4 26.2 8.2" stroke="#f9c270" stroke-width="1" stroke-linecap="round" opacity=".35" stroke-dasharray="1.5 3"/>
+          <circle cx="26.2" cy="8.2" r="1.25" fill="#fff0b8"/>
+        </svg>
+      </div>
+      <div class="brand-copy">
+        <div class="eyebrow"><span>概率论与数理统计</span><span class="dot"></span><span>定义 3.1.9</span></div>
+        <h1>二维正态分布<span>3D Interactive Lab</span></h1>
+      </div>
+    </div>
+    <a class="back-lab" href="../index.html" aria-label="返回概率论可视化合集">← 全部实验</a>
+    <div class="top-meta">
+      <div class="meta-chip"><span class="pulse"></span>WebGL 实时渲染</div>
+      <div class="meta-chip symbol">N(μ₁, μ₂, σ₁², σ₂², ρ)</div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel" aria-label="参数控制面板">
+      <div class="panel-head">
+        <div>
+          <div class="panel-kicker">PARAMETERS</div>
+          <h2>参数控制</h2>
+        </div>
+        <button class="icon-btn" id="resetAll" type="button" title="恢复默认参数">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2.8 6.2A5.5 5.5 0 1 1 2.5 9"/>
+            <path d="M2.4 2.8v3.7h3.7"/>
+          </svg>
+          <span>默认</span>
+        </button>
+      </div>
+      <p class="panel-intro">拖动滑块，观察联合概率密度曲面的高度、宽度与脊线方向如何随参数变化。</p>
+
+      <div class="param-group">
+        <div class="group-head"><span>位置参数</span><span>POSITION</span></div>
+
+        <div class="param-row" data-param="mu1" style="--pc:#b197ff">
+          <div class="param-head">
+            <label class="param-label" for="mu1">
+              <span class="param-symbol">μ<sub>1</sub></span>
+              <span class="param-name">x 的均值</span>
+            </label>
+            <output class="param-value" id="mu1-value" for="mu1">0.0</output>
+          </div>
+          <div class="range-wrap">
+            <div class="range-track"><span class="range-fill"></span></div>
+            <input type="range" id="mu1" data-param="mu1" min="-2" max="2" step="0.1" value="0" aria-label="μ 1，x 的均值">
+          </div>
+        </div>
+
+        <div class="param-row" data-param="mu2" style="--pc:#b197ff">
+          <div class="param-head">
+            <label class="param-label" for="mu2">
+              <span class="param-symbol">μ<sub>2</sub></span>
+              <span class="param-name">y 的均值</span>
+            </label>
+            <output class="param-value" id="mu2-value" for="mu2">0.0</output>
+          </div>
+          <div class="range-wrap">
+            <div class="range-track"><span class="range-fill"></span></div>
+            <input type="range" id="mu2" data-param="mu2" min="-2" max="2" step="0.1" value="0" aria-label="μ 2，y 的均值">
+          </div>
+        </div>
+      </div>
+
+      <div class="param-group">
+        <div class="group-head"><span>尺度与相关性</span><span>SHAPE</span></div>
+
+        <div class="param-row" data-param="sigma1" style="--pc:#6ee7d3">
+          <div class="param-head">
+            <label class="param-label" for="sigma1">
+              <span class="param-symbol">σ<sub>1</sub></span>
+              <span class="param-name">x 的标准差</span>
+            </label>
+            <output class="param-value" id="sigma1-value" for="sigma1">1.00</output>
+          </div>
+          <div class="range-wrap">
+            <div class="range-track"><span class="range-fill"></span></div>
+            <input type="range" id="sigma1" data-param="sigma1" min="0.4" max="1.6" step="0.05" value="1" aria-label="σ 1，x 的标准差">
+          </div>
+        </div>
+
+        <div class="param-row" data-param="sigma2" style="--pc:#6ee7d3">
+          <div class="param-head">
+            <label class="param-label" for="sigma2">
+              <span class="param-symbol">σ<sub>2</sub></span>
+              <span class="param-name">y 的标准差</span>
+            </label>
+            <output class="param-value" id="sigma2-value" for="sigma2">1.00</output>
+          </div>
+          <div class="range-wrap">
+            <div class="range-track"><span class="range-fill"></span></div>
+            <input type="range" id="sigma2" data-param="sigma2" min="0.4" max="1.6" step="0.05" value="1" aria-label="σ 2，y 的标准差">
+          </div>
+        </div>
+
+        <div class="param-row" data-param="rho" data-bipolar="true" style="--pc:#f9c270">
+          <div class="param-head">
+            <label class="param-label" for="rho">
+              <span class="param-symbol">ρ</span>
+              <span class="param-name">相关系数</span>
+            </label>
+            <output class="param-value" id="rho-value" for="rho">0.00</output>
+          </div>
+          <div class="range-wrap bipolar">
+            <div class="range-track"><span class="range-fill"></span><i class="range-center"></i></div>
+            <input type="range" id="rho" data-param="rho" min="-0.95" max="0.95" step="0.01" value="0" aria-label="ρ，x 与 y 的相关系数">
+          </div>
+        </div>
+      </div>
+
+      <div class="preset-block">
+        <div class="group-head"><span>快速预设</span><span>PRESETS</span></div>
+        <div class="preset-grid">
+          <button class="preset-btn active" type="button" data-preset="standard" style="--pc:#6ee7d3">标准正态</button>
+          <button class="preset-btn" type="button" data-preset="positive" style="--pc:#f9c270">强正相关</button>
+          <button class="preset-btn" type="button" data-preset="negative" style="--pc:#b197ff">强负相关</button>
+          <button class="preset-btn" type="button" data-preset="narrow" style="--pc:#f49ac1">狭长山脊</button>
+        </div>
+      </div>
+
+      <div class="switch-list">
+        <label class="switch-row">
+          <span class="switch-copy"><b>自动旋转</b><small>相机围绕曲面缓慢环绕</small></span>
+          <input type="checkbox" id="autoRotate" checked>
+          <span class="switch-ui" aria-hidden="true"></span>
+        </label>
+        <label class="switch-row">
+          <span class="switch-copy"><b>等高线</b><small>在曲面上显示等密度椭圆</small></span>
+          <input type="checkbox" id="showContours" checked>
+          <span class="switch-ui" aria-hidden="true"></span>
+        </label>
+      </div>
+
+      <div class="insight-card">
+        <div class="insight-head"><span>读图提示</span><span>How to read</span></div>
+        <ul class="insight-list">
+          <li><i style="--dot:#b197ff"></i><span><b>μ₁, μ₂</b> 平移峰值所在的位置</span></li>
+          <li><i style="--dot:#6ee7d3"></i><span><b>σ₁, σ₂</b> 控制曲面在 x / y 方向的宽度</span></li>
+          <li><i style="--dot:#f9c270"></i><span><b>ρ</b> 决定椭圆等高线的倾斜程度</span></li>
+        </ul>
+        <div class="insight-note">当 <b>ρ &gt; 0</b> 时，椭圆主轴沿“x 增大、y 也增大”的方向倾斜；<b>|ρ|</b> 越接近 1，椭圆越狭长。</div>
+      </div>
+
+      <div class="panel-foot">
+        <span>高度轴按峰值自动缩放</span>
+        <span class="foot-badge">3D · f(x,y)</span>
+      </div>
+    </aside>
+
+    <section class="stage" aria-label="三维概率密度曲面">
+      <div class="stage-bar">
+        <div class="stage-title">
+          <span class="live-dot" aria-hidden="true"></span>
+          <h2>联合概率密度曲面</h2>
+          <span class="chip">SURFACE</span>
+        </div>
+        <div class="stage-actions">
+          <span class="auto-indicator" id="autoIndicator"><span class="auto-dot"></span><span id="autoLabel">自动旋转中</span></span>
+          <button class="ghost-btn" id="resetView" type="button" title="回到初始视角">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2.8 6.2A5.5 5.5 0 1 1 2.5 9"/>
+              <path d="M2.4 2.8v3.7h3.7"/>
+            </svg>
+            重置视角
+          </button>
+        </div>
+      </div>
+
+      <div class="viewport" id="viewport">
+        <div class="formula-card" aria-label="二维正态分布概率密度公式">
+          <div class="formula-top"><span>Joint Probability Density</span><span class="formula-def">定义 3.1.9</span></div>
+          <div class="formula-main">
+            <span class="math-i">f</span><span>(x, y) =</span>
+            <span class="frac"><span>1</span><span>2πσ₁σ₂√(1−ρ²)</span></span>
+            <span class="math-i">e</span><sup>−Q / [2(1−ρ²)]</sup>
+          </div>
+          <div class="formula-q">Q = (x−μ₁)²/σ₁² − 2ρ(x−μ₁)(y−μ₂)/(σ₁σ₂) + (y−μ₂)²/σ₂²</div>
+        </div>
+
+        <div class="readout-card" aria-label="分布读数">
+          <div class="card-label">Peak Density</div>
+          <div class="peak-row"><span class="peak-number" id="peakValue">0.1592</span><span class="peak-unit">/ 单位面积</span></div>
+          <div class="peak-formula">f(μ₁, μ₂)</div>
+          <div class="hairline"></div>
+          <div class="rho-status"><span class="rho-dot" id="rhoDot"></span><span id="rhoTitle">无线性相关</span><span class="rho-value" id="rhoReadout">ρ = 0.00</span></div>
+          <div class="cov-row">Cov(X, Y) = <span id="covValue">0.000</span></div>
+        </div>
+
+        <div class="legend-card" aria-label="颜色图例">
+          <div class="legend-head"><span>概率密度</span><span>高度自动缩放</span></div>
+          <div class="legend-bar"></div>
+          <div class="legend-labels"><span>低密度</span><span>高密度</span></div>
+        </div>
+
+        <div class="hint-card">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
+            <rect x="4.2" y="1.8" width="7.6" height="12.4" rx="3.8"/>
+            <path d="M8 4.4v2.2"/>
+          </svg>
+          <span>拖拽旋转</span>
+          <span class="hint-sep"></span>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4.2" y="1.8" width="7.6" height="12.4" rx="3.8"/>
+            <path d="M8 5.2v6.2M6.3 8l1.7-1.8L9.7 8"/>
+          </svg>
+          <span>滚轮缩放</span>
+          <span class="hint-sep"></span>
+          <span>右键平移</span>
+        </div>
+
+        <div class="viewport-fade" aria-hidden="true"></div>
+        <div class="fatal" id="fatal">当前浏览器无法启用 WebGL。<br>请使用最新版 Chrome、Edge 或 Firefox 打开此页面。</div>
+      </div>
+    </section>
+  </main>
+</div>
+<!-- __APP_BUNDLE__ -->
+</body>
+</html>

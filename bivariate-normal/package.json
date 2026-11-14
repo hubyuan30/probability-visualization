@@ -1,0 +1,21 @@
+{
+  "name": "bivariate-normal-visualization",
+  "version": "1.0.0",
+  "description": "Interactive 3D visualization of the bivariate normal distribution",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "build": "esbuild src/main.js --bundle --format=iife --target=chrome100,edge100,firefox100,safari15 --minify --legal-comments=none --outfile=dist/app.js && node build.mjs"
+  },
+  "keywords": [
+    "probability",
+    "bivariate-normal",
+    "threejs",
+    "visualization"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "esbuild": "^0.28.2",
+    "three": "^0.186.1"
+  }
+}

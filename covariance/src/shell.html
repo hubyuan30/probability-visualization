@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="一个可以动手拖拽的协方差可视化实验室：理解协方差、相关系数和常见误区。">
+<title>协方差实验室 · 两个变量是不是在一起波动？</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2317231f'/%3E%3Ccircle cx='23' cy='39' r='5.5' fill='%236ee7c8'/%3E%3Ccircle cx='42' cy='24' r='5.5' fill='%23ff9f7f'/%3E%3C/svg%3E">
+<style>
+/*__STYLE__*/
+</style>
+<script>document.documentElement.classList.add('js');</script>
+</head>
+<body id="top">
+<div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+
+<header class="nav">
+  <div class="nav-in">
+    <a class="brand" href="#top" aria-label="回到顶部">
+      <span class="brand-mark">Cov</span>
+      <span>协方差实验室</span>
+    </a>
+    <a class="back-lab" href="../index.html" aria-label="返回概率论可视化合集">← 全部实验</a>
+    <nav class="nav-links" aria-label="页面导航">
+      <a href="#intuition">直觉</a>
+      <a href="#lab-a">拖点实验室</a>
+      <a href="#lab-b">相关旋钮</a>
+      <a href="#formula">公式解剖</a>
+      <a href="#myths">误区</a>
+      <a href="#quiz">自测</a>
+    </nav>
+    <a class="nav-cta" href="#lab-a">开始动手 <span>→</span></a>
+  </div>
+</header>
+
+<main>
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-copy reveal">
+        <div class="eyebrow"><span class="pulse-dot"></span>概率论 · 互动笔记</div>
+        <h1>协方差，<br>两个变量是不是<br>在<span class="mark">一起</span>波动？</h1>
+        <p class="hero-lede">方差只关心一个变量自己有多“飘”；协方差关心两个变量，<strong>是不是朝同一个方向飘</strong>。拖一拖下面的点，公式就会跟着你一起变。</p>
+        <div class="hero-formula" aria-label="协方差公式：Cov(X,Y) 等于 E 乘以 X 减 EX 乘以 Y 减 EY">
+          <span class="fname">Cov</span>(<span class="fx">X</span>,&nbsp;<span class="fy">Y</span>)&nbsp;=&nbsp;<span class="fmean">E</span>[&nbsp;(<span class="fx">X</span>&nbsp;−&nbsp;<span class="fx">EX</span>)(<span class="fy">Y</span>&nbsp;−&nbsp;<span class="fy">EY</span>)]
+        </div>
+        <div class="hero-actions">
+          <a class="btn btn-dark" href="#lab-a">拖一拖，就懂了 <span aria-hidden="true">→</span></a>
+          <a class="btn btn-ghost" href="#intuition">先看直觉</a>
+        </div>
+        <div class="hero-meta">
+          <span><i class="dot teal"></i>同号 → 正贡献</span>
+          <span><i class="dot coral"></i>异号 → 负贡献</span>
+          <span class="meta-muted">纯前端 · 打开即用</span>
+        </div>
+      </div>
+
+      <div class="hero-visual reveal" aria-label="协方差动态点云演示">
+        <div class="hv-top">
+          <span class="live"><i></i>实时点云</span>
+          <span class="hv-r" id="heroR">r = +0.82</span>
+        </div>
+        <div class="hv-canvas" id="heroWrap">
+          <canvas id="heroCanvas" aria-label="散点图：随着相关系数变化，点云在同向、反向和无关之间摆动"></canvas>
+        </div>
+        <div class="hv-bottom">
+          <div class="hv-status"><i id="heroDot"></i><span id="heroStatus">正相关：一起偏大、一起偏小</span></div>
+          <span class="hv-note">ρ 正在缓慢摆动</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 01 INTUITION ============ -->
+  <section class="section" id="intuition">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="sec-index">01 / INTUITION</div>
+        <div>
+          <span class="kicker">先拆词</span>
+          <h2>“协”是结伴，<span class="nw">“方差”是波动</span></h2>
+          <p class="lede">协方差就是把“偏离均值”这件事从一个人变成两个人：各自先找基准线，再把两个偏离乘起来。英文 co-variance 里，co- 是“共同”，variance 是“波动”；乘积的符号，就是它们这次是“同向”还是“反向”。</p>
+        </div>
+      </div>
+
+      <div class="mnemonic-grid">
+        <article class="concept-card reveal">
+          <div class="card-top">
+            <span class="tag">单个变量</span>
+            <span class="glyph" aria-hidden="true">D</span>
+          </div>
+          <h3>方差 · 独自波动</h3>
+          <div class="mini-formula">D(<span class="fx">X</span>) = E[(<span class="fx">X</span> − <span class="fx">EX</span>)²]</div>
+          <p>只看 X 一个人：每次偏离均值多少，平方之后取平均。平方让正负偏离都算“波动大”，所以方差永远不小于 0。</p>
+          <div class="card-foot"><i class="dot teal"></i>自己跟自己比 · 量的是“散得开不开”</div>
+          <svg class="variance-doodle" viewBox="0 0 120 52" aria-hidden="true">
+            <line x1="6" y1="30" x2="114" y2="30" stroke="currentColor" stroke-opacity=".22" stroke-width="1" stroke-dasharray="3 4"/>
+            <line x1="60" y1="18" x2="60" y2="42" stroke="currentColor" stroke-opacity=".45" stroke-width="1"/>
+            <circle cx="18" cy="30" r="3.2" fill="currentColor" fill-opacity=".28"/>
+            <circle cx="31" cy="23" r="3.2" fill="currentColor" fill-opacity=".38"/>
+            <circle cx="47" cy="28" r="3.2" fill="currentColor" fill-opacity=".3"/>
+            <circle cx="65" cy="21" r="3.2" fill="currentColor" fill-opacity=".42"/>
+            <circle cx="79" cy="33" r="3.2" fill="currentColor" fill-opacity=".34"/>
+            <circle cx="96" cy="26" r="3.2" fill="currentColor" fill-opacity=".28"/>
+            <circle cx="108" cy="35" r="3.2" fill="currentColor" fill-opacity=".24"/>
+            <text x="53" y="12" font-size="8" fill="currentColor" fill-opacity=".5" font-family="Georgia, serif" font-style="italic">EX</text>
+          </svg>
+        </article>
+
+        <article class="concept-card dark reveal">
+          <div class="card-glow" aria-hidden="true"></div>
+          <div class="card-top">
+            <span class="tag">两个变量</span>
+            <span class="glyph" aria-hidden="true">Cov</span>
+          </div>
+          <h3>协方差 · 结伴波动</h3>
+          <div class="mini-formula">Cov(<span class="fx">X</span>, <span class="fy">Y</span>) = E[(<span class="fx">X</span> − <span class="fx">EX</span>)(<span class="fy">Y</span> − <span class="fy">EY</span>)]</div>
+          <p>把 X 的偏离和 Y 的偏离乘在一起。同号 → 正贡献，异号 → 负贡献，再取平均。正负抵消得越多，协方差越接近 0。</p>
+          <div class="card-foot"><i class="dot teal"></i>同向为正 <i class="dot coral" style="margin-left:5px"></i>反向为负 <span style="opacity:.65">· Cov(X,X)=D(X)</span></div>
+        </article>
+      </div>
+
+      <div class="quadrant-card reveal">
+        <div class="quad-copy">
+          <span class="kicker">几何直觉</span>
+          <h3>把每个点放进四个象限</h3>
+          <p>以均值点 (EX, EY) 为原点。每个点都用一个乘积投票：横向偏离和纵向偏离同号就投“正”，异号就投“负”。</p>
+          <div class="quad-table">
+            <div class="q q-pos"><i class="dot teal"></i>Ⅰ &amp; Ⅲ · 同号 → dx·dy &gt; 0 · 正贡献</div>
+            <div class="q q-neg"><i class="dot coral"></i>Ⅱ &amp; Ⅳ · 异号 → dx·dy &lt; 0 · 负贡献</div>
+          </div>
+          <p class="small">点云越偏向 Ⅰ / Ⅲ 两象限，协方差越正；越偏向 Ⅱ / Ⅳ，协方差越负。如果两边势均力敌，就会相互抵消。</p>
+        </div>
+        <div class="quad-fig">
+          <svg viewBox="0 0 560 390" role="img" aria-label="四个象限示意图：右上和左下同号贡献为正，左上和右下异号贡献为负">
+            <defs>
+              <filter id="qDotShadow" x="-60%" y="-60%" width="220%" height="220%">
+                <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#17211d" flood-opacity=".18"/>
+              </filter>
+            </defs>
+            <rect x="284" y="32" width="218" height="160" rx="10" fill="#0c7c68" opacity=".055"/>
+            <rect x="58" y="32" width="218" height="160" rx="10" fill="#c95a3c" opacity=".05"/>
+            <rect x="58" y="200" width="218" height="160" rx="10" fill="#0c7c68" opacity=".055"/>
+            <rect x="284" y="200" width="218" height="160" rx="10" fill="#c95a3c" opacity=".05"/>
+            <ellipse cx="280" cy="200" rx="158" ry="55" transform="rotate(-42 280 200)" fill="none" stroke="#0c7c68" stroke-opacity=".22" stroke-width="1.5" stroke-dasharray="5 6"/>
+
+            <line x1="44" y1="200" x2="516" y2="200" stroke="#17211d" stroke-opacity=".28" stroke-width="1.1"/>
+            <line x1="280" y1="22" x2="280" y2="374" stroke="#17211d" stroke-opacity=".28" stroke-width="1.1"/>
+            <path d="M510 200l-7-3.5v7z" fill="#17211d" fill-opacity=".3"/>
+            <path d="M280 28l-3.5 7h7z" fill="#17211d" fill-opacity=".3"/>
+            <text x="500" y="188" text-anchor="end" font-family="Georgia, serif" font-size="12" font-style="italic" fill="#66716a">EX</text>
+            <text x="289" y="45" font-family="Georgia, serif" font-size="12" font-style="italic" fill="#66716a">EY</text>
+
+            <text x="482" y="58" text-anchor="end" font-family="ui-monospace, Consolas, monospace" font-size="9.5" fill="#0c7c68" letter-spacing=".8">Ⅰ (+,+)</text>
+            <text x="78" y="58" font-family="ui-monospace, Consolas, monospace" font-size="9.5" fill="#c95a3c" letter-spacing=".8">Ⅱ (−,+)</text>
+            <text x="78" y="360" font-family="ui-monospace, Consolas, monospace" font-size="9.5" fill="#0c7c68" letter-spacing=".8">Ⅲ (−,−)</text>
+            <text x="482" y="360" text-anchor="end" font-family="ui-monospace, Consolas, monospace" font-size="9.5" fill="#c95a3c" letter-spacing=".8">Ⅳ (+,−)</text>
+            <text x="392" y="185" text-anchor="middle" font-family="ui-monospace, Consolas, monospace" font-size="8.5" fill="#0c7c68" opacity=".65">dx·dy &gt; 0</text>
+            <text x="168" y="185" text-anchor="middle" font-family="ui-monospace, Consolas, monospace" font-size="8.5" fill="#c95a3c" opacity=".65">dx·dy &lt; 0</text>
+            <text x="168" y="349" text-anchor="middle" font-family="ui-monospace, Consolas, monospace" font-size="8.5" fill="#0c7c68" opacity=".65">dx·dy &gt; 0</text>
+            <text x="392" y="349" text-anchor="middle" font-family="ui-monospace, Consolas, monospace" font-size="8.5" fill="#c95a3c" opacity=".65">dx·dy &lt; 0</text>
+
+            <g class="q-dot" filter="url(#qDotShadow)">
+              <circle cx="330" cy="152" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="372" cy="117" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="411" cy="92" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="304" cy="176" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="430" cy="135" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="362" cy="72" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+
+              <circle cx="170" cy="261" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="205" cy="238" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="240" cy="292" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="137" cy="306" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="186" cy="317" r="5.5" fill="#0c7c68" stroke="#fffdf7" stroke-width="2"/>
+
+              <circle cx="190" cy="132" r="5.5" fill="#c95a3c" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="225" cy="101" r="5.5" fill="#c95a3c" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="153" cy="166" r="5.5" fill="#c95a3c" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="250" cy="139" r="5.5" fill="#c95a3c" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="348" cy="253" r="5.5" fill="#c95a3c" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="384" cy="282" r="5.5" fill="#c95a3c" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="421" cy="305" r="5.5" fill="#c95a3c" stroke="#fffdf7" stroke-width="2"/>
+              <circle cx="333" cy="319" r="5.5" fill="#c95a3c" stroke="#fffdf7" stroke-width="2"/>
+            </g>
+
+            <circle cx="280" cy="200" r="5" fill="#fffdf7" stroke="#17211d" stroke-width="1.6"/>
+            <line x1="272" y1="200" x2="288" y2="200" stroke="#17211d" stroke-width="1"/>
+            <line x1="280" y1="192" x2="280" y2="208" stroke="#17211d" stroke-width="1"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="takeaway reveal">
+        <span class="quote-mark" aria-hidden="true">“</span>
+        <p><strong>方差</strong>：独自波动；<strong>协方差</strong>：结伴波动。</p>
+        <span class="takeaway-sub">协方差 = 两个变量“共同偏离各自均值”的平均乘积。正负号说明方向，绝对值说明这种共同趋势的强弱（但会受量纲影响）。</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 02 LAB A ============ -->
+  <section class="section" id="lab-a">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="sec-index">02 / DRAG LAB</div>
+        <div>
+          <span class="kicker">拖点实验室</span>
+          <h2>每个点，都在为<span class="nw">协方差</span>“投票”</h2>
+          <p class="lede">拖动任意圆点，观察右侧数字怎么变。每个点的贡献，就是它到均值中心的横向偏离乘纵向偏离；所有贡献加起来再除以点数，就是协方差。</p>
+        </div>
+      </div>
+
+      <div class="lab-card reveal">
+        <div class="lab-toolbar">
+          <div class="preset-group" role="group" aria-label="预设数据">
+            <span class="toolbar-label">预设</span>
+            <button type="button" class="chip preset is-active" data-preset="positive"><i class="dot teal"></i>正相关</button>
+            <button type="button" class="chip preset" data-preset="negative"><i class="dot coral"></i>负相关</button>
+            <button type="button" class="chip preset" data-preset="zero"><i class="dot muted"></i>几乎无关</button>
+            <button type="button" class="chip preset" data-preset="quadratic"><i class="dot amber"></i>U 形陷阱</button>
+          </div>
+          <div class="toolbar-actions">
+            <label class="switch" for="rectToggle">
+              <input type="checkbox" id="rectToggle" checked>
+              <span class="switch-track" aria-hidden="true"></span>
+              <span>矩形面积</span>
+            </label>
+            <button type="button" class="chip" id="addPoint">＋ 添加点</button>
+            <button type="button" class="chip" id="playBtn">▶ 逐点累加</button>
+            <button type="button" class="icon-btn" id="resetA" title="重置当前预设" aria-label="重置当前预设">↺</button>
+          </div>
+        </div>
+
+        <div class="lab-grid">
+          <div class="chart-pane">
+            <div class="canvas-wrap" id="labWrap">
+              <canvas id="labCanvas" aria-label="可拖动散点图。拖动点改变位置，右侧显示协方差、相关系数和每个点的贡献。"></canvas>
+              <div class="play-badge" id="playBadge" hidden></div>
+              <div class="chart-tip" id="labTip" hidden></div>
+              <div class="canvas-note">按住圆点拖动 · 虚线是均值位置</div>
+            </div>
+            <div class="chart-foot">
+              <span>矩形面积 = dx · dy，带正负号</span>
+              <span class="legend"><span><i class="dot teal"></i>同号贡献为正</span><span><i class="dot coral"></i>异号贡献为负</span></span>
+            </div>
+          </div>
+
+          <aside class="lab-side">
+            <div class="stat-hero">
+              <div class="stat-label">协方差 Cov(X, Y)</div>
+              <div class="stat-big" id="covBig">+1.42</div>
+              <div class="status-pill" id="covStatus">正相关趋势</div>
+            </div>
+            <div class="mini-grid">
+              <div><span>D(X) · 方差</span><b id="varX">2.72</b></div>
+              <div><span>D(Y) · 方差</span><b id="varY">2.72</b></div>
+            </div>
+            <div class="r-block">
+              <div class="r-label"><span>相关系数 r</span><b id="rBig">+0.77</b></div>
+              <div class="r-track" aria-hidden="true"><span class="r-mid"></span><i id="rDot"></i></div>
+              <div class="r-scale"><span>−1</span><span>0</span><span>+1</span></div>
+            </div>
+            <div class="eq-box">
+              <span class="eq-label">计算</span>
+              <code id="eqLine">Σ(dx·dy) / n = 11.36 / 8 = 1.42</code>
+            </div>
+            <div class="contrib-head"><span>每个点的贡献</span><span>dx · dy</span></div>
+            <div class="contrib-list" id="contribList"></div>
+            <p class="sign-note" id="signNote">5 个正贡献，3 个负贡献 · 同号占多数</p>
+          </aside>
+        </div>
+      </div>
+
+      <div class="steps reveal">
+        <div class="step"><span class="n">01</span><div><b>找中心</b><p>两条虚线是 X̄ 和 Ȳ。它们把平面分成四个象限。</p></div></div>
+        <div class="step"><span class="n">02</span><div><b>乘偏离</b><p>横向偏离 dx 乘纵向偏离 dy，同号为正、异号为负。</p></div></div>
+        <div class="step"><span class="n">03</span><div><b>取平均</b><p>把所有带符号的面积加起来，再除以 n，就是协方差。</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 03 LAB B ============ -->
+  <section class="section" id="lab-b">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="sec-index">03 / CORRELATION</div>
+        <div>
+          <span class="kicker">相关旋钮</span>
+          <h2>把“结伴程度”变成<span class="nw">一个旋钮</span></h2>
+          <p class="lede">这里有一团由同一个随机种子生成的点。拖动 ρ 改变两个变量的共同趋势，再拖动 σ 改变各自的波动幅度。看看协方差和相关系数，谁会被量纲带着跑。</p>
+        </div>
+      </div>
+
+      <div class="lab-card reveal">
+        <div class="rho-grid">
+          <div class="chart-pane">
+            <div class="canvas-wrap rho-wrap" id="rhoWrap">
+              <canvas id="rhoCanvas" aria-label="可调节相关系数的散点图，点按所处象限正负着色"></canvas>
+              <div class="overlay-chip tl" id="rhoChip"><span class="rho-caret" style="background:var(--teal)"></span>ρ = +0.85</div>
+              <div class="overlay-chip tr">n = 260</div>
+              <div class="canvas-note">虚线椭圆 ≈ 2σ 等高线</div>
+            </div>
+            <div class="chart-foot">
+              <span>点云会随着 ρ 连续“倒向”</span>
+              <span class="legend"><span><i class="dot teal"></i>xy &gt; 0</span><span><i class="dot coral"></i>xy &lt; 0</span></span>
+            </div>
+          </div>
+
+          <aside class="rho-controls">
+            <div class="controls-head">
+              <h3>转动旋钮</h3>
+              <p>点云形状由三个参数决定：共同趋势 ρ，以及 X、Y 各自的波动幅度。</p>
+            </div>
+
+            <div class="rho-live">
+              <div><span>协方差 Cov</span><b class="pos" id="rhoCov">+1.63</b></div>
+              <div><span>相关系数 r</span><b class="pos" id="rhoR">+0.85</b></div>
+            </div>
+
+            <div class="slider-block">
+              <div class="slider-head">
+                <label for="rhoSlider">ρ <small>共同趋势</small></label>
+                <output id="rhoVal">+0.85</output>
+              </div>
+              <input id="rhoSlider" class="rho-range" type="range" min="-1" max="1" step="0.01" value="0.85" aria-label="相关系数 rho">
+              <div class="slider-ends"><span>−1 反向</span><span>0 无关</span><span>+1 同向</span></div>
+              <div class="quick-row">
+                <button type="button" class="mini-chip" data-rho="0.85">同向 +0.85</button>
+                <button type="button" class="mini-chip" data-rho="-0.75">反向 −0.75</button>
+                <button type="button" class="mini-chip" data-rho="0">几乎无关 0</button>
+              </div>
+            </div>
+
+            <div class="slider-block">
+              <div class="slider-head">
+                <label for="sigmaX">σ<sub>X</sub> <small>X 的波动</small></label>
+                <output id="sigmaXVal">1.60</output>
+              </div>
+              <input id="sigmaX" type="range" min="0.6" max="2.2" step="0.05" value="1.6" aria-label="X 的标准差">
+              <div class="slider-ends"><span>0.6 更集中</span><span>2.2 更分散</span></div>
+            </div>
+
+            <div class="slider-block">
+              <div class="slider-head">
+                <label for="sigmaY">σ<sub>Y</sub> <small>Y 的波动</small></label>
+                <output id="sigmaYVal">1.20</output>
+              </div>
+              <input id="sigmaY" type="range" min="0.6" max="2.2" step="0.05" value="1.2" aria-label="Y 的标准差">
+              <div class="slider-ends"><span>0.6 更集中</span><span>2.2 更分散</span></div>
+            </div>
+
+            <div class="identity-box">
+              <span>把旋钮的关系写成公式</span>
+              <code id="rhoIdentity">Cov = ρ · σX · σY = 0.85 × 1.60 × 1.20 ≈ 1.63</code>
+              <small>ρ 无量纲；协方差带“X 的单位 × Y 的单位”。</small>
+            </div>
+
+            <div class="matrix-box">
+              <div class="matrix-title">协方差矩阵 Σ</div>
+              <div class="matrix" aria-label="协方差矩阵：对角线上是方差，其余是协方差">
+                <span class="bracket" aria-hidden="true">[</span>
+                <div class="matrix-grid">
+                  <b id="mVarX">2.56</b><b id="mCov1">1.63</b>
+                  <b id="mCov2">1.63</b><b id="mVarY">1.44</b>
+                </div>
+                <span class="bracket" aria-hidden="true">]</span>
+              </div>
+              <small>对角线是方差，其余位置是协方差。</small>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <div class="rho-tip reveal">
+        <span class="tip-label">试试看</span>
+        <span>把 σ<sub>X</sub> 拉大：点云在横向上散开，<b>协方差跟着变大</b>，但<b>相关系数 r 纹丝不动</b>。这就是为什么比较“关系强弱”时，用消除了量纲的 ρ 更公平。</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 04 FORMULA ============ -->
+  <section class="section" id="formula">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="sec-index">04 / FORMULA</div>
+        <div>
+          <span class="kicker">公式解剖</span>
+          <h2>一行公式，四个动作</h2>
+          <p class="lede">别急着背。把 Cov(X,Y) = E[(X−EX)(Y−EY)] 拆成四步，每一步都能在上一张图里找到对应。</p>
+        </div>
+      </div>
+
+      <div class="formula-anatomy reveal">
+        <div class="formula-hero">
+          <span class="kicker">主公式</span>
+          <div class="big-formula">
+            <span class="fname">Cov</span>(<span class="fx">X</span>, <span class="fy">Y</span>) = <span class="fmean">E</span>[ (<span class="fx">X</span> − <span class="fx">EX</span>)(<span class="fy">Y</span> − <span class="fy">EY</span>)]
+          </div>
+          <div class="formula-caption">先各自偏离均值，再把两个偏离相乘，最后对乘积取期望（平均）。<br>协方差衡量的不是“数值大小”，而是“偏离方向是否一致”。</div>
+        </div>
+        <ol class="anatomy-list">
+          <li><span class="num">01</span><div><b>找两条基准线：EX 和 EY</b><p>均值是“各自的地心”。协方差关心的是每个点相对自己均值偏了多少，而不是它的绝对大小。</p></div></li>
+          <li><span class="num">02</span><div><b>各算一个偏离：<span class="fx">X−EX</span> 与 <span class="fy">Y−EY</span></b><p>横向偏离告诉你 X 这次偏大还是偏小，纵向偏离描述 Y。正负号已经藏在里面了。</p></div></li>
+          <li><span class="num">03</span><div><b>把两个偏离相乘</b><p>同号相乘为正：这次“一起偏大”或“一起偏小”；异号为负：一个偏大、一个偏小。乘积就是每个点的投票。</p></div></li>
+          <li><span class="num">04</span><div><b>E[·] 取期望</b><p>把所有点的带符号乘积平均。正票多，协方差为正；负票多，协方差为负；势均力敌，就接近 0。</p></div></li>
+        </ol>
+      </div>
+
+      <div class="identity-grid reveal">
+        <article class="identity">
+          <span class="tag">名字对上了</span>
+          <h3>Cov(X, X) = D(X)</h3>
+          <p>自己和自己“结伴”，乘积变成偏离的平方，平均起来正是方差。方差只是协方差的特例。</p>
+        </article>
+        <article class="identity">
+          <span class="tag">考试常用</span>
+          <h3>Cov(aX+b, cY+d) = ac · Cov(X,Y)</h3>
+          <p>加减常数只是整体平移，不改变偏离；乘常数会等比缩放偏离，两个缩放系数相乘。</p>
+        </article>
+        <article class="identity">
+          <span class="tag">和与差</span>
+          <h3>D(X ± Y) = D(X) + D(Y) ± 2Cov(X,Y)</h3>
+          <p>协方差就是两个变量相加时的“交叉项”。相互独立时它等于 0，方差才简单相加。</p>
+        </article>
+        <article class="identity">
+          <span class="tag">去掉量纲</span>
+          <h3>ρ = Cov(X,Y) / (σ<sub>X</sub>σ<sub>Y</sub>)</h3>
+          <p>把协方差按两个标准差标准化，得到 [−1, 1] 之间的相关系数。ρ 只描述线性相关，不带单位。</p>
+        </article>
+      </div>
+
+      <div class="alt-formula reveal">
+        <code>Cov(X, Y) = E(XY) − EX · EY</code>
+        <span>等价的常用写法，很多计算题直接套它更快。</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 05 MYTHS ============ -->
+  <section class="section" id="myths">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="sec-index">05 / TRAPS</div>
+        <div>
+          <span class="kicker">三个常见误区</span>
+          <h2>协方差会“骗人”的<span class="nw">地方</span></h2>
+          <p class="lede">它不是万能的相似度。协方差只抓线性趋势，还带着量纲，更不能告诉你谁导致谁。</p>
+        </div>
+      </div>
+
+      <div class="myth-grid">
+        <article class="myth-card wide reveal">
+          <div class="myth-copy">
+            <span class="tag warn">最容易错</span>
+            <h3>Cov = 0，不代表独立</h3>
+            <p>协方差只抓“线性趋势”。下面这条 U 形关系是 <b>Y = X² + 噪声</b>：Y 明明由 X 决定，但左右两臂的正负贡献互相抵消，协方差接近 0。独立一定不相关，不相关却不一定独立。</p>
+            <div class="myth-stats">
+              <span>Cov ≈ <b id="uCov">0.00</b></span>
+              <span>r ≈ <b id="uR">0.00</b></span>
+              <span class="ok">但 Y 由 X 决定</span>
+            </div>
+            <button type="button" class="chip" id="uResample">↻ 换一组样本</button>
+          </div>
+          <div class="u-chart">
+            <canvas id="uCanvas" aria-label="U 形散点图：协方差接近零，但两个变量明显不独立"></canvas>
+            <div class="u-chip">Y = X² + 噪声</div>
+          </div>
+        </article>
+
+        <article class="myth-card reveal">
+          <span class="tag">量纲陷阱</span>
+          <h3>数值大 ≠ 关系强</h3>
+          <p>把 X 的单位从“米”换成“厘米”，每个数乘 100，协方差也直接乘 100，但两个变量的关系一点没变强。这就是为什么要看 ρ。</p>
+          <div class="scale-demo">
+            <div class="scale-row"><span>X 的单位：米</span><b>Cov = c</b></div>
+            <div class="scale-arrow">× 100 <span style="color:var(--faint);font-weight:400">单位换算</span></div>
+            <div class="scale-row"><span>X 的单位：厘米</span><b>Cov = 100c</b></div>
+            <div class="scale-pill"><i class="dot teal"></i>ρ 仍然是同一个值</div>
+          </div>
+        </article>
+
+        <article class="myth-card reveal">
+          <span class="tag">因果陷阱</span>
+          <h3>相关 ≠ 因果</h3>
+          <p>两个变量一起变，可能只是都被第三个变量带着走。协方差能告诉你“同步”，却不能告诉你“谁导致谁”。</p>
+          <div class="cause-demo">
+            <div class="cause-top"><span>冰淇淋销量</span><i>＋＋</i><span>溺水人数</span></div>
+            <div class="cause-line"><span>夏天一起上升</span></div>
+            <div class="cause-bottom"><b>真正的推手：气温</b><span>一个隐藏的第三变量</span></div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 06 QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="container">
+      <div class="section-head quiz-head reveal">
+        <div class="sec-index">06 / CHECK</div>
+        <div>
+          <span class="kicker">自测</span>
+          <h2>四道题，检验<span class="nw">“真的懂了”</span></h2>
+          <p class="lede">选一个答案，马上看解释。答错也没关系，回到上面的图里找线索，比背结论有用。</p>
+        </div>
+        <div class="quiz-score" id="quizScore" aria-live="polite">0 / 4</div>
+      </div>
+
+      <div class="quiz-list">
+        <article class="quiz-card reveal" data-answer="a">
+          <div class="quiz-no">Q1</div>
+          <div class="quiz-body">
+            <h3>“当 X 比均值大时，Y 往往也比均值大”，这最直接对应下面哪一句？</h3>
+            <div class="options">
+              <button type="button" class="opt" data-opt="a"><span class="key">A</span><span>Cov(X,Y) &gt; 0</span></button>
+              <button type="button" class="opt" data-opt="b"><span class="key">B</span><span>X 与 Y 相互独立</span></button>
+              <button type="button" class="opt" data-opt="c"><span class="key">C</span><span>D(X) &gt; D(Y)</span></button>
+              <button type="button" class="opt" data-opt="d"><span class="key">D</span><span>Cov(X,Y) = 0</span></button>
+            </div>
+            <div class="explain"><b>为什么</b><p>同向偏离时，(X−EX)(Y−EY) 多为正，平均起来协方差就为正。协方差首先告诉你方向，而不是“谁一定跟着谁变”。</p></div>
+          </div>
+        </article>
+
+        <article class="quiz-card reveal" data-answer="d">
+          <div class="quiz-no">Q2</div>
+          <div class="quiz-body">
+            <h3>已知 Cov(X,Y) = 2，则 Cov(3X−1, −2Y+5) 等于？</h3>
+            <div class="options">
+              <button type="button" class="opt" data-opt="a"><span class="key">A</span><span>6</span></button>
+              <button type="button" class="opt" data-opt="b"><span class="key">B</span><span>−6</span></button>
+              <button type="button" class="opt" data-opt="c"><span class="key">C</span><span>12</span></button>
+              <button type="button" class="opt" data-opt="d"><span class="key">D</span><span>−12</span></button>
+            </div>
+            <div class="explain"><b>为什么</b><p>平移不改变偏离，缩放系数要相乘：Cov(aX+b, cY+d) = ac·Cov(X,Y) = 3×(−2)×2 = −12。负号来自两个变量方向相反地缩放。</p></div>
+          </div>
+        </article>
+
+        <article class="quiz-card reveal" data-answer="b">
+          <div class="quiz-no">Q3</div>
+          <div class="quiz-body">
+            <h3>若 Cov(X,Y) = 0，下面哪句话最准确？</h3>
+            <div class="options">
+              <button type="button" class="opt" data-opt="a"><span class="key">A</span><span>X 与 Y 一定相互独立</span></button>
+              <button type="button" class="opt" data-opt="b"><span class="key">B</span><span>没有线性相关趋势，但不一定独立</span></button>
+              <button type="button" class="opt" data-opt="c"><span class="key">C</span><span>X、Y 的方差一定都为 0</span></button>
+              <button type="button" class="opt" data-opt="d"><span class="key">D</span><span>X 与 Y 的变化方向一定相反</span></button>
+            </div>
+            <div class="explain"><b>为什么</b><p>协方差只捕捉线性关系。Y = X² 就是反例：Cov ≈ 0，但 X 完全决定了 Y。独立 ⇒ 协方差为 0；协方差为 0 ⇏ 独立。</p></div>
+          </div>
+        </article>
+
+        <article class="quiz-card reveal" data-answer="b">
+          <div class="quiz-no">Q4</div>
+          <div class="quiz-body">
+            <h3>把 X 的单位从米换成厘米（数值 ×100），Y 不变。下面会发生什么？</h3>
+            <div class="options">
+              <button type="button" class="opt" data-opt="a"><span class="key">A</span><span>Cov 和 ρ 都乘 100</span></button>
+              <button type="button" class="opt" data-opt="b"><span class="key">B</span><span>Cov 乘 100，ρ 不变</span></button>
+              <button type="button" class="opt" data-opt="c"><span class="key">C</span><span>Cov 不变，ρ 乘 100</span></button>
+              <button type="button" class="opt" data-opt="d"><span class="key">D</span><span>两者都不变</span></button>
+            </div>
+            <div class="explain"><b>为什么</b><p>Cov(100X, Y) = 100·Cov(X,Y)，协方差带量纲；ρ 已经除以 σXσY，单位被约掉，所以保持不变。</p></div>
+          </div>
+        </article>
+      </div>
+
+      <div class="quiz-result" id="quizResult" role="status"></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="container">
+    <div class="footer-card">
+      <div>
+        <div class="footer-brand"><span class="brand-mark">Cov</span>概率论 · 互动笔记</div>
+        <h2>方差：独自波动。<br><span>协方差：结伴波动。</span></h2>
+      </div>
+      <div class="footer-note">
+        <p>本页用总体形式 1/n 计算，方便和 E[·] 对应；样本协方差通常除以 n−1，不改变符号和直觉。</p>
+        <p>参考：<a href="https://zh.wikipedia.org/wiki/%E5%8D%8F%E6%96%B9%E5%B7%AE" target="_blank" rel="noopener noreferrer">Wikipedia · 协方差</a> · <a href="https://www.khanacademy.org/math/statistics-probability/describing-relationships-quantitative-data/more-on-correlation/a/covariance-and-correlation" target="_blank" rel="noopener noreferrer">Khan Academy · Covariance</a> · <a href="https://math.stackexchange.com/questions/4194711/confused-about-zero-covariance-and-independence" target="_blank" rel="noopener noreferrer">零协方差与独立</a></p>
+        <a class="footer-top" href="#top">回到顶部 ↑</a>
+      </div>
+    </div>
+    <div class="footline">
+      <span>协方差实验室 · 给概率论一个能动手的注脚</span>
+      <span>拖动、观察、再自己解释一遍</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+/*__SCRIPT__*/
+</script>
+</body>
+</html>
